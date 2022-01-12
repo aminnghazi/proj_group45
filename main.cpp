@@ -5,9 +5,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfx.h>
 #include <string>
-#include <SDL2/SDL2_gfx.h>
 #include<SDL2/SDL_ttf.h>
 
+#define rc_foot_y(rhead_y,rc_scale) rhead_y + 300 * rc_scale
+#define lc_foot_y(lhead_y,lc_scale) lhead_y + 300 * lc_scale
+#define rc_foot_x(rhead_x,rc_scale) rhead_x - 80 * rc_scale
+#define lc_foot_x(lhead_x,lc_scale) lhead_x + 80 * lc_scale
+#define square(x) x*x
 
 using namespace std;
 //action functions
@@ -21,29 +25,40 @@ void draw(SDL_Renderer* renderer);
 void collision(SDL_Renderer* renderer);
 void movement(SDL_Renderer* renderer);
 void cordinatefinder();
+void resetvalues();
+string intToString(int a);
+void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[]);
+void shoot();
+bool sign(int a);
+char checkshoot(int foot_x,int ,int foot_y,bool isLeftPlayer);
+
 
 //stage functions
 short startMenu(SDL_Renderer* renderer,int page_width,int page_height);
 void play(SDL_Renderer* renderer);
 void tutorial(SDL_Renderer* renderer);
 void setting(SDL_Renderer* renderer);
-
+int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, int ump_w);
 
 
 //global variables
-int fps=50,delay=1000/fps;
+int fps=50,delay=1000/fps,rc_shoot=0,lc_shoot=0;
 long long int t=0;      // time(increases when every frame is shown
-const int nbtn = 50,zamin_y=610;    // number of btn
+const int nbtn = 50,zamin_y=590;
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
 bool Ljump;
-
+bool Rjump;
 const char* ume_picAddress [] = {"1.jpg" , "2.jpg" ,"3.jpg"}; //address of pictures for start menu
 const Uint8 *state = SDL_GetKeyboardState(NULL);
 
 SDL_Event *event = new SDL_Event();
+SDL_Renderer* renderer;
 
-float ball_x=200,ball_y=40,ball_size=30,ball_dx=2,ball_ddx=0,ball_dy=50,ball_ddy=0.5, //toop
-      lc_dy=0,lc_ddy=0.5,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;//character chap
+float ball_x=200,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
+      lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,//character chap
+      lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                //character chap
+      ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=700,rc_y=zamin_y-500*rc_scale,//character rast
+      rhead_x=210*rc_scale+rc_x,rhead_y=165*rc_scale+rc_y;               //character rast
 
 
 int main( int argc, char * argv[] )
@@ -146,7 +161,7 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
       btn_array[14][0]=info_x;btn_array[14][1]=info_y; //guide button
       btn_array[14][2]=info_x+info_size;btn_array[14][3]=info_y+info_size;
       //note that btn_array  [15] is reserved for start menu for adding more buttons
-
+      SDL_Delay(100);
       while(1){
            SDL_PollEvent(event);
            if(SDL_GetMouseState(&mouse_x,&mouse_y)&SDL_BUTTON(SDL_BUTTON_LEFT)){
@@ -191,20 +206,102 @@ void play(SDL_Renderer* renderer){
        tir_rect.w = 1280;    //pictures size
        tir_rect.h = 800;
 
+       SDL_Rect lc_rect;
+       SDL_Texture* lc_texture = NULL;
+       lc_texture = IMG_LoadTexture(renderer,"1norm.png");
+
+       SDL_Rect rc_rect;
+       SDL_Texture* rc_texture = NULL;
+       rc_texture = IMG_LoadTexture(renderer,"1norml.png");
+
+       lc_rect.w = 350 * lc_scale;    //pictures size
+       lc_rect.h = 500 * lc_scale;
+
+       rc_rect.w = 350 * lc_scale;    //pictures size
+       rc_rect.h = 500 * lc_scale;
+
+       SDL_Rect ball_rect;
+       SDL_Texture* ball_texture = NULL;
+
+       ball_texture = IMG_LoadTexture(renderer,"ball.png");
+       ball_rect.w = ball_radius * 2;
+       ball_rect.h = ball_radius * 2;
+
 while(1){
+picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
 //cordinatefinder();//comment this line in final version
-cout<<state;
 SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
 movement(renderer);
 collision(renderer);
-draw(renderer);
+
+if(state[SDL_SCANCODE_E]){
+     lc_shoot=8;
+     shoot();
+     SDL_DestroyTexture(lc_texture);
+     lc_texture = IMG_LoadTexture(renderer,"1shoot.png");
+     }
+if(lc_shoot==0) {
+            SDL_DestroyTexture(lc_texture);
+            lc_texture = IMG_LoadTexture(renderer,"1norm.png");
+}
+
+if(state[SDL_SCANCODE_SLASH] && rc_shoot == 0){
+     rc_shoot=8;
+     SDL_DestroyTexture(rc_texture);
+     rc_texture = IMG_LoadTexture(renderer,"1shootl.png");
+     }
+
+if(rc_shoot==0) {
+            SDL_DestroyTexture(rc_texture);
+            rc_texture = IMG_LoadTexture(renderer,"1norml.png");
+
+            }
+
+
+//left player
+      lc_rect.x = lc_x;        //left player coordinates
+      lc_rect.y = lc_y;        //left player coordinates
+      SDL_RenderCopy(renderer,lc_texture, NULL, &lc_rect);
+//left player
+
+//right palyer
+      rc_rect.x = rc_x;        //left player coordinates
+      rc_rect.y = rc_y;        //left player coordinates
+      SDL_RenderCopy(renderer,rc_texture, NULL, &rc_rect);
+//right player
+
+//ball
+      ball_rect.x=ball_x - ball_radius;
+      ball_rect.y=ball_y - ball_radius;
+      //ellipse(renderer,ball_x,ball_y,ball_radius,ball_radius,100,0,100,1);//replace with image
+      SDL_RenderCopy(renderer, ball_texture, NULL, &ball_rect);
+//ball
+
+
 SDL_RenderCopy(renderer, tir, NULL, &tir_rect);
 SDL_RenderPresent(renderer);
+
+      if(state[SDL_SCANCODE_ESCAPE])
+      switch(PauseMenu(renderer,m_img,1280,800,100)){
+            case 0:
+                  break;
+            case 1:
+                  resetvalues();
+                  SDL_DestroyTexture(m_img);
+                  SDL_DestroyTexture(tir);
+                  return play(renderer);//restart
+            case 2:
+                  resetvalues();
+                  SDL_DestroyTexture(m_img);
+                  SDL_DestroyTexture(tir);
+                  return ;//quit
+             }
 t++;
 SDL_Delay(delay);
 }
 
 SDL_DestroyTexture(m_img);
+SDL_DestroyTexture(tir);
 
 }
 
@@ -223,6 +320,7 @@ void tutorial(SDL_Renderer* renderer){
       btn_array[13][2]=rarrow_x+rarrow_size;btn_array[13][3]=rarrow_y+rarrow_size;
       btn_array[15][0]=home_x;btn_array[15][1]=home_y; //right arrow
       btn_array[15][2]=home_x+home_size;btn_array[15][3]=home_y+home_size;
+
       while(1){
            SDL_PollEvent(event) ;
            if(SDL_GetMouseState(&mouse_x,&mouse_y)&SDL_BUTTON(SDL_BUTTON_LEFT)){
@@ -266,10 +364,198 @@ void tutorial(SDL_Renderer* renderer){
 
 
 void setting(SDL_Renderer* renderer){
+
+const char* players[]= {"1norm.png", "2norm.png", "3norm.png"};
+int lc_x=200 ,lc_y=300 ,rc_x=800 ,rc_y=300 ;
+int rc_size=200 ,lc_size=200 ;
+short numberofpics=sizeof(players)/sizeof(players[0]);
+short int index_player_L=0;
+short int index_player_R=0;
 window_color(renderer,10,20,30);
+SDL_Event *e = new SDL_Event();
+while(1)
+{
+    if(SDL_PollEvent(e))
+    {
+        if(e->type==SDL_KEYDOWN)
+        {
+            switch(e->key.keysym.sym)
+            {
+                case SDLK_a:
+                    if(index_player_L>=1)
+                        index_player_L--;
+                    else
+                        index_player_L=numberofpics;
+                    break;
+                case SDLK_w:
+                    break;
+                case SDLK_s:
+                    break;
+                case SDLK_d:
+                    if(index_player_L<numberofpics-1)
+                        index_player_L++;
+                    else
+                        index_player_L=0;
+                    break;
+                case SDLK_LEFT:
+                    if(index_player_R>=1)
+                        index_player_R--;
+                    else
+                        index_player_R=numberofpics;
+                    break;
+                case SDLK_RIGHT:
+                    if(index_player_R<numberofpics-1)
+                        index_player_R++;
+                    else
+                        index_player_R=0;
+                    break;
+                case SDLK_UP:
+                    break;
+                case SDLK_DOWN:
+                    break;
+            }
+        }
+    }
+    SDL_RenderPresent(renderer);
+    picLoader(renderer,rc_x,rc_y,rc_size,rc_size,players[index_player_R]);
+    picLoader(renderer,lc_x,lc_y,lc_size,lc_size,players[index_player_L]);
+}
 SDL_RenderPresent(renderer);
+
+
 }
 
+int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, int ump_w)
+{
+    SDL_Texture* ump_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, W, H);
+    SDL_SetRenderTarget(m_renderer, ump_texture);
+    SDL_RenderCopy(m_renderer, m_texture, NULL, NULL);
+    //0 for resume, 1 for restart, 2 for quit
+    int i = 0;
+    //menu background
+    short int vx[4] = { W / 2 + ump_w,W,W,W / 2 - ump_w }, vy[4] = { 0,0,H,H };
+    filledPolygonColor(m_renderer, vx, vy, 4, 0xff330000);
+    //score
+    const char* ump_time = intToString(t/fps).c_str();
+    textRGBA(m_renderer, W / 2 + ump_w + W / 10, 100, "Time:", 2, 40, 255, 255, 255, 255);
+    textRGBA(m_renderer, W / 2 + ump_w + W / 6 + 80, 150, ump_time, 2, 40, 255, 255, 255, 255);
+    SDL_SetRenderTarget(m_renderer, NULL);
+    SDL_Event* e = new SDL_Event();
+    bool ump_nbp = true; // avoid unnecessary rendering
+    bool hover=false; //mouse is hovering over button
+
+    // start which run once
+    // first button
+        btn_array[0][0] = ump_w + W / 2 + 10 - (640 * ump_w) / H;
+        btn_array[0][1] = 320;
+        btn_array[0][2] = W;
+        btn_array[0][3] = 420;
+    // second button
+        btn_array[1][0] = ump_w + W / 2 + 10 - (840 * ump_w) / H;
+        btn_array[1][1] = 420;
+        btn_array[1][2] = W;
+        btn_array[1][3] = 520;
+    // third button
+        btn_array[2][0] = ump_w + W / 2 + 10 - (1040 * ump_w) / H;
+        btn_array[2][1] = 520;
+        btn_array[2][2] = W;
+        btn_array[2][3] = 620;
+    int mx=0, my=0;
+    while (1)
+    {
+        e->type = NULL;
+        SDL_PollEvent(e);
+        if (e->type==SDL_MOUSEMOTION)
+        {
+            mx = e-> motion.x;
+            my = e-> motion.y;
+        }
+        else
+        {
+            mx=0;
+            my=0;
+        }
+
+
+        //hover effect
+        for (int j=0;j<3;j++)
+        {
+            if (btn_clicked(j,mx,my) && i!=j)
+            {
+                hover=true;
+                i=j;
+                ump_nbp=true;
+                break;
+            }
+        }
+
+        if (e->type==SDL_MOUSEBUTTONDOWN && hover)
+        {
+            SDL_DestroyTexture(ump_texture);
+            return i;
+        }
+
+        else if (e->type == SDL_KEYDOWN )
+        {
+            if (e->key.keysym.sym == SDLK_RETURN)
+            {
+                SDL_DestroyTexture(ump_texture);
+                return i;
+            }
+            else if (e->key.keysym.sym == SDLK_DOWN)
+            {
+                ump_nbp = true;
+                i++;
+                i %= 3;
+            }
+            else if (e->key.keysym.sym == SDLK_UP)
+            {
+                ump_nbp = true;
+                i--;
+                i = (3 + i) % 3;
+            }
+        }
+        if (ump_nbp)
+        {
+            ump_nbp = false;
+            SDL_RenderCopy(m_renderer, ump_texture, NULL, NULL);
+            //buttons
+            if (i == 0)
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 320 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 420 * ump_w / H };
+                short int ump_vy[4] = { 320,320,420,420 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
+            }
+            else if (i == 1)
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 420 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 520 * ump_w / H };
+                short int ump_vy[4] = { 420,420,520,520 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
+            }
+            else
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 520 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 620 * ump_w / H };
+                short int ump_vy[4] = { 520,520,620,620 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
+            }
+            SDL_RenderPresent(m_renderer);
+
+        }
+
+    }
+}
 
 void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address){
 
@@ -289,43 +575,76 @@ void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const ch
 
 }
 void draw(SDL_Renderer* renderer){
-ellipse(renderer,ball_x,ball_y,ball_size,ball_size,100,0,100,1);//replace with image
-picLoader(renderer,lc_x,lc_y,350*lc_scale,500*lc_scale,"1norm.png");
-ellipse(renderer,lhead_x,lhead_y,10,10,110,102,31,1);
-
+//picLoader(renderer,lc_x,lc_y,350*lc_scale,500*lc_scale,"1norm.png");
+//picLoader(renderer,rc_x,rc_y,350*rc_scale,500*rc_scale,"1norml.png");
 }
 
 void collision(SDL_Renderer* renderer){
-if(ball_x>1280-ball_size&&ball_dx>0) ball_dx*=-1;   //raste safhe
-if((ball_y>590-ball_size)&&ball_dy>0) ball_dy*=-0.7;//chape zamin
-if(ball_y<0+ball_size&&ball_dy<0) ball_dy*=-1;      //khorde be saghf
-if(ball_x<0+ball_size&&ball_dx<0) ball_dx*=-1;      //chape safhe
-if((ball_y<390&&ball_y>360)&&(ball_x<100 || ball_x>1160)) ball_dy*=-1; //tir ofoghi
+//toop va divar ha
+      if(ball_x>1280-ball_radius&&ball_dx>0) ball_dx*=-1;   //raste safhe
+      if((ball_y>590-ball_radius)&&ball_dy>0) ball_dy*=-0.7;  //kafe zamin
+      if(ball_y<0+ball_radius&&ball_dy<0) ball_dy*=-1;      //khorde be saghf
+      if(ball_x<0+ball_radius&&ball_dx<0) ball_dx*=-1;      //chape safhe
+      if((ball_y<390&&ball_y>360)&&(ball_x<120 || ball_x>1110)) ball_dy*=-1; //tir ofoghi
+//toop va divar ha
 
-
-if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=(ball_size + 100*lc_scale) * (ball_size + 100*lc_scale)){
-
+//kale va toop
+      if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
+         (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
+         && sign(lhead_x-ball_x) == sign(ball_dx)){
+            ball_dx *=-0.8;
+            ball_dy *=-0.8;
+            }
+      if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
+   (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
+   && sign(rhead_x-ball_x) == sign(ball_dx)){
+      ball_dx *=-0.8;
+      ball_dy *=-0.8;
       }
+//kale va toop
+
+//badan va toop
+if(ball_x>rc_x  &&  ball_x <rc_x + 100*rc_scale && ball_y>rc_y && ball_y<rc_y + 500*rc_scale &&  ball_dx > 0)
+      ball_dx=-2;//barkhorde toop be chape badan
+if(ball_x<rc_x+350*rc_scale && ball_x > rc_x + 200*rc_scale && ball_y>rc_y && ball_y<rc_y + 500*rc_scale && ball_dx < 0)
+      ball_dx=2;
+
+if(ball_x>lc_x  &&  ball_x <lc_x + 100*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale &&  ball_dx > 0)
+      ball_dx*=-1;
+if(ball_x<lc_x+350*lc_scale && ball_x > lc_x + 200*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale && ball_dx < 0)
+      ball_dx*=-1;
+//badan va toop
+
 }
 
 void movement(SDL_Renderer* renderer){
-//      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_size) {ball_ddy=0;ball_dy=0;ball_y=590-ball_size;}
+//      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_radius) {ball_ddy=0;ball_dy=0;ball_y=590-ball_radius;}
 ball_x+=ball_dx;              //kinematic toop
 ball_dx+=ball_ddx;            //kinematic toop
 lhead_x=185*lc_scale+lc_x;    //kale donbale badan biad
 lhead_y=165*lc_scale+lc_y;    //kale donbale badan biad
 
+rhead_x=210*rc_scale+rc_x;    //kale donbale badan biad
+rhead_y=165*rc_scale+rc_y;    //kale donbale badan biad
+
 if(ball_y<zamin_y){
 ball_y+=ball_dy;
 ball_dy+=ball_ddy;
 }
+
 if(lc_y<zamin_y - 500*lc_scale|| Ljump){
 lc_y+=lc_dy;
 lc_dy+=lc_ddy;
 Ljump=0;
 }
+
+if(rc_y<zamin_y - 500*rc_scale|| Rjump){
+rc_y+=rc_dy;
+rc_dy+=rc_ddy;
+Rjump=0;
+}
       SDL_PumpEvents();
-      if (state[SDL_SCANCODE_A] && lc_x>90) {
+      if (state[SDL_SCANCODE_A] && lc_x>30) {
           lc_x-=3.5;
       }
       if (state[SDL_SCANCODE_D]&&lc_x<1080) {
@@ -333,7 +652,18 @@ Ljump=0;
       }
            if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
           Ljump=1;
-          lc_dy=-9;
+          lc_dy=-15;
+      }
+
+      if (state[SDL_SCANCODE_LEFT] && rc_x>30) {
+          rc_x-=3.5;
+      }
+      if (state[SDL_SCANCODE_RIGHT]&&rc_x<1080) {
+          rc_x+=3.5;
+      }
+           if (state[SDL_SCANCODE_UP] && rc_y>=zamin_y - 500*rc_scale) {
+          Rjump=1;
+          rc_dy=-15;
       }
 }
 
@@ -364,4 +694,66 @@ void cordinatefinder(){
 int x,y;
 SDL_GetMouseState(&x,&y);
 cout<<x<<"\t"<<y<<endl;
+}
+
+string intToString(int a){
+    int m = 1;
+    string ret = "";
+    while(a != 0){
+        ret = char((a % 10) + '0') + ret;
+        a /= 10;
+    }
+    return ret;
+}
+void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[])
+{
+    int n = 40;
+    for (int i = 0; i < n; i++)
+    {
+        aalineRGBA(m_renderer, vx[0] + i * (vx[0] - vx[3]) / (vy[0] - vy[3]), vy[0] + i, vx[1] - i, vy[1] + i, 255, 255, 255, 255 * (n - i) / n);
+        aalineRGBA(m_renderer, vx[1] - i, vy[1] + i, vx[2] - i, vy[2] - i, 255, 255, 255, 255 * (n - i) / n);
+        aalineRGBA(m_renderer, vx[2] - i, vy[2] - i, vx[3] - i * (vx[0] - vx[3]) / (vy[0] - vy[3]), vy[3] - i, 255, 255, 255, 255 * (n - i) / n);
+        //        aalineRGBA(m_renderer,vx[0]+i,vy[0]+i,vx[3]+i,vy[3]-i,255,255,255,255*(n-i)/n);
+    }
+}
+
+void resetvalues(){
+//restart kardan bazi
+t=0;
+ball_x=200,ball_y=40,ball_radius=30,ball_dx=2,ball_ddx=0,ball_dy=50,ball_ddy=0.5, //toop
+lc_dy=0,lc_ddy=0.5,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;
+}
+bool sign(int a){
+if (a>=0) return 1;
+if (a<0)  return 0;
+}
+
+char checkshoot(int foot_x,int ,int foot_y,bool isLeftPlayer){
+
+//left player check
+if(isLeftPlayer){
+if(square(lc_foot_x(lhead_x,lc_scale) - ball_x) + square(lc_foot_y(lhead_y,lc_scale) - ball_y)
+   <=  square(100 * lc_scale)
+   )
+      return 'c';
+}
+
+}
+
+void shoot(){
+// pa va toop (shoot)
+     if(rc_shoot) {
+     ball_dx = -10;
+     ball_dy = -2.5;
+     rc_shoot--;
+     }
+       if(lc_shoot) {
+     ball_dx = +10;
+     ball_dy = -2.5;
+     lc_shoot--;
+     }
+      ellipse(renderer,rc_foot_x(rhead_x,rc_scale),rc_foot_y(rhead_y,rc_scale),100*lc_scale,100*lc_scale,10,231,10,0);
+      ellipse(renderer,lc_foot_x(lhead_x,lc_scale),lc_foot_y(lhead_y,lc_scale),100*rc_scale,100*rc_scale,10,231,10,0);
+//pa va toop(shoot)
+
 }
