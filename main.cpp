@@ -12,6 +12,7 @@
 #define rc_foot_x(rhead_x,rc_scale) rhead_x - 80 * rc_scale
 #define lc_foot_x(lhead_x,lc_scale) lhead_x + 80 * lc_scale
 #define square(x) x*x
+#define shoot_radius 160
 
 using namespace std;
 //action functions
@@ -70,9 +71,8 @@ int main( int argc, char * argv[] )
     Uint32 SDL_flags = SDL_INIT_VIDEO | SDL_INIT_TIMER ;
     Uint32 WND_flags = SDL_WINDOW_SHOWN;//| SDL_WINDOW_FULLSCREEN_DESKTOP;//SDL_WINDOW_BORDERLESS ;
     SDL_Window *m_window;
-    SDL_Renderer *m_renderer;
     SDL_Init( SDL_flags );
-    SDL_CreateWindowAndRenderer( L, W, WND_flags, &m_window, &m_renderer );
+    SDL_CreateWindowAndRenderer( L, W, WND_flags, &m_window, &renderer );
     //Pass the focus to the drawing window
     SDL_RaiseWindow(m_window);
     //Get screen res olution
@@ -83,15 +83,15 @@ int main( int argc, char * argv[] )
 bool exit=0;
 while(!exit){
 
-switch(startMenu(m_renderer,L,W)){
+switch(startMenu(renderer,L,W)){
 case 0://play button pressed
-      play(m_renderer);
+      play(renderer);
       break;
 case 1://info button pressed
-      tutorial(m_renderer);
+      tutorial(renderer);
       break;
 case 2://setting button pressed
-      setting(m_renderer);
+      setting(renderer);
       break;
 case 3:
       exit=1;
@@ -103,7 +103,7 @@ case 3:
 
 
                         SDL_DestroyWindow( m_window );
-                        SDL_DestroyRenderer( m_renderer );
+                        SDL_DestroyRenderer( renderer );
                         SDL_Quit();
                         return 0;
 }
@@ -189,7 +189,8 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
 
 
 void play(SDL_Renderer* renderer){
-      //load kardan pas zamine
+bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
+//load kardan pas zamine
        SDL_Rect img_rect;
        SDL_Texture* m_img = NULL;
        m_img = IMG_LoadTexture(renderer,"a.png");
@@ -197,7 +198,7 @@ void play(SDL_Renderer* renderer){
        img_rect.y = 0;        //pictures coordinates
        img_rect.w = 1280;    //pictures size
        img_rect.h = 800;
-             //load kardan pas zamine
+
        SDL_Rect tir_rect;
        SDL_Texture* tir = NULL;
        tir = IMG_LoadTexture(renderer,"tir.png");
@@ -209,23 +210,37 @@ void play(SDL_Renderer* renderer){
        SDL_Rect lc_rect;
        SDL_Texture* lc_texture = NULL;
        lc_texture = IMG_LoadTexture(renderer,"1norm.png");
-
        SDL_Rect rc_rect;
        SDL_Texture* rc_texture = NULL;
        rc_texture = IMG_LoadTexture(renderer,"1norml.png");
-
-       lc_rect.w = 350 * lc_scale;    //pictures size
+       lc_rect.w = 350 * lc_scale;
        lc_rect.h = 500 * lc_scale;
-
-       rc_rect.w = 350 * lc_scale;    //pictures size
+       rc_rect.w = 350 * lc_scale;
        rc_rect.h = 500 * lc_scale;
 
        SDL_Rect ball_rect;
        SDL_Texture* ball_texture = NULL;
-
        ball_texture = IMG_LoadTexture(renderer,"ball.png");
        ball_rect.w = ball_radius * 2;
        ball_rect.h = ball_radius * 2;
+
+       SDL_Rect left_foot_rect;
+       SDL_Texture* left_foot_texture = NULL;
+       left_foot_texture = IMG_LoadTexture(renderer,"1shoe.png");
+       left_foot_rect.h=300*lc_scale;
+       left_foot_rect.w=300*lc_scale;
+//       SDL_Point left_foot_axle={0,30};
+       SDL_Point left_foot_axle={10,20};
+
+       SDL_Rect right_foot_rect;
+       SDL_Texture* right_foot_texture = NULL;
+       right_foot_texture = IMG_LoadTexture(renderer,"1shoel.png");
+       right_foot_rect.h=300*lc_scale;
+       right_foot_rect.w=300*lc_scale;
+       SDL_Point right_foot_axle={350 * rc_scale/2,20};
+
+//load kardan pas zamine
+
 
 while(1){
 picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
@@ -234,28 +249,6 @@ SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
 movement(renderer);
 collision(renderer);
 
-if(state[SDL_SCANCODE_E]){
-     lc_shoot=8;
-     shoot();
-     SDL_DestroyTexture(lc_texture);
-     lc_texture = IMG_LoadTexture(renderer,"1shoot.png");
-     }
-if(lc_shoot==0) {
-            SDL_DestroyTexture(lc_texture);
-            lc_texture = IMG_LoadTexture(renderer,"1norm.png");
-}
-
-if(state[SDL_SCANCODE_SLASH] && rc_shoot == 0){
-     rc_shoot=8;
-     SDL_DestroyTexture(rc_texture);
-     rc_texture = IMG_LoadTexture(renderer,"1shootl.png");
-     }
-
-if(rc_shoot==0) {
-            SDL_DestroyTexture(rc_texture);
-            rc_texture = IMG_LoadTexture(renderer,"1norml.png");
-
-            }
 
 
 //left player
@@ -270,6 +263,32 @@ if(rc_shoot==0) {
       SDL_RenderCopy(renderer,rc_texture, NULL, &rc_rect);
 //right player
 
+//shooting
+if(state[SDL_SCANCODE_E]){
+     lc_shoot=8;
+     }
+if(lc_shoot>0){
+      shoot();
+      left_foot_rect.x=lhead_x-10;
+      left_foot_rect.y=lhead_y+60;
+      ellipse(renderer,left_foot_rect.x,left_foot_rect.y,10,10,100,103,2,1);
+      SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(50 - square(lc_shoot) * 10),&left_foot_axle,SDL_FLIP_NONE);
+}
+
+if(state[SDL_SCANCODE_SLASH] ){
+     rc_shoot=8;
+     shoot();
+     }
+if(rc_shoot>0){
+      shoot();
+      right_foot_rect.x=rhead_x-220*rc_scale;
+      right_foot_rect.y=rhead_y+120*rc_scale;
+//      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
+
+      SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-square(rc_shoot)*20,&right_foot_axle,SDL_FLIP_NONE);
+}
+//shooting
+
 //ball
       ball_rect.x=ball_x - ball_radius;
       ball_rect.y=ball_y - ball_radius;
@@ -279,6 +298,7 @@ if(rc_shoot==0) {
 
 
 SDL_RenderCopy(renderer, tir, NULL, &tir_rect);
+
 SDL_RenderPresent(renderer);
 
       if(state[SDL_SCANCODE_ESCAPE])
@@ -742,18 +762,18 @@ if(square(lc_foot_x(lhead_x,lc_scale) - ball_x) + square(lc_foot_y(lhead_y,lc_sc
 
 void shoot(){
 // pa va toop (shoot)
-     if(rc_shoot) {
+if(rc_shoot>0) {
      ball_dx = -10;
      ball_dy = -2.5;
      rc_shoot--;
-     }
-       if(lc_shoot) {
+}
+if(lc_shoot>0) {
      ball_dx = +10;
      ball_dy = -2.5;
      lc_shoot--;
-     }
-      ellipse(renderer,rc_foot_x(rhead_x,rc_scale),rc_foot_y(rhead_y,rc_scale),100*lc_scale,100*lc_scale,10,231,10,0);
-      ellipse(renderer,lc_foot_x(lhead_x,lc_scale),lc_foot_y(lhead_y,lc_scale),100*rc_scale,100*rc_scale,10,231,10,0);
+}
+//      ellipse(renderer,rc_foot_x(rhead_x,rc_scale),rc_foot_y(rhead_y,rc_scale),shoot_radius*lc_scale,shoot_radius*lc_scale,10,231,10,0);
+//      ellipse(renderer,lc_foot_x(lhead_x,lc_scale),lc_foot_y(lhead_y,lc_scale),shoot_radius*rc_scale,shoot_radius*rc_scale,10,231,10,0);
 //pa va toop(shoot)
 
 }
