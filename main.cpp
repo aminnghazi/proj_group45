@@ -11,8 +11,10 @@
 #define lc_foot_y(lhead_y,lc_scale) lhead_y + 300 * lc_scale
 #define rc_foot_x(rhead_x,rc_scale) rhead_x - 80 * rc_scale
 #define lc_foot_x(lhead_x,lc_scale) lhead_x + 80 * lc_scale
-#define square(x) x*x
-#define shoot_radius 160
+#define shoot_radius 190
+#define DEGREE15 1
+#define DEGREE45 2
+#define DEGREENEGATIVE15 3
 
 using namespace std;
 //action functions
@@ -20,18 +22,18 @@ void window_color(SDL_Renderer *Renderer, int R, int G, int B);
 void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, int fill_boolian );
 void ellipse(SDL_Renderer *Renderer, int x, int y, int Radius1, int Radius2, int R, int G, int B, int fill_boolian);
 void my_line(SDL_Renderer *Renderer, int x_1, int y_1, int L,double theta,int widht, int R, int G, int B );
-void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address);
-bool btn_clicked(int index, int mouse_x, int mouse_y);
-void draw(SDL_Renderer* renderer);
-void collision(SDL_Renderer* renderer);
+void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address); //used for loading pictures
+bool btn_clicked(int index, int mouse_x, int mouse_y);//checks if button is clicked by mouse
+void draw(SDL_Renderer* renderer);     //useless
+void collision(SDL_Renderer* renderer);//checks if 2 objects intersect
 void movement(SDL_Renderer* renderer);
-void cordinatefinder();
-void resetvalues();
+void cordinatefinder(); //used for debugging(prints mouse coordinates)
+void resetvalues(bool fullrestart); //restarts variables when restart button is clicked or a goal is scored
 string intToString(int a);
-void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[]);
-void shoot();
-bool sign(int a);
-char checkshoot(int foot_x,int ,int foot_y,bool isLeftPlayer);
+void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[]);//used in pause menu
+void shoot(); // this function is called when shoot button is pressed
+short checkshoot(float tangent);// checks angle of shooting
+bool sign(int a);//returns sign of a number(0 if negative)
 
 
 //stage functions
@@ -43,7 +45,7 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
 
 
 //global variables
-int fps=50,delay=1000/fps,rc_shoot=0,lc_shoot=0;
+int fps=50,delay=1000/fps,rc_shoot=-10,lc_shoot=-10;
 long long int t=0;      // time(increases when every frame is shown
 const int nbtn = 50,zamin_y=590;
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
@@ -223,6 +225,7 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
        ball_texture = IMG_LoadTexture(renderer,"ball.png");
        ball_rect.w = ball_radius * 2;
        ball_rect.h = ball_radius * 2;
+       SDL_Point ball_point={ball_radius,ball_radius};
 
        SDL_Rect left_foot_rect;
        SDL_Texture* left_foot_texture = NULL;
@@ -251,6 +254,7 @@ collision(renderer);
 
 
 
+
 //left player
       lc_rect.x = lc_x;        //left player coordinates
       lc_rect.y = lc_y;        //left player coordinates
@@ -264,36 +268,33 @@ collision(renderer);
 //right player
 
 //shooting
-if(state[SDL_SCANCODE_E]){
+if(state[SDL_SCANCODE_E] && lc_shoot==-10){
      lc_shoot=8;
      }
 if(lc_shoot>0){
-      shoot();
-      left_foot_rect.x=lhead_x-10;
-      left_foot_rect.y=lhead_y+60;
-      ellipse(renderer,left_foot_rect.x,left_foot_rect.y,10,10,100,103,2,1);
-      SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(50 - square(lc_shoot) * 10),&left_foot_axle,SDL_FLIP_NONE);
+      left_foot_rect.x=lhead_x-15;
+      left_foot_rect.y=lhead_y+40;
+      SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(-50 + (lc_shoot)*(lc_shoot)),&left_foot_axle,SDL_FLIP_NONE);
 }
 
-if(state[SDL_SCANCODE_SLASH] ){
+if(state[SDL_SCANCODE_SLASH] && rc_shoot==-10 ){
      rc_shoot=8;
-     shoot();
      }
 if(rc_shoot>0){
-      shoot();
       right_foot_rect.x=rhead_x-220*rc_scale;
       right_foot_rect.y=rhead_y+120*rc_scale;
 //      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
-
-      SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-square(rc_shoot)*20,&right_foot_axle,SDL_FLIP_NONE);
+      SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
 }
+      shoot();
+
 //shooting
 
 //ball
       ball_rect.x=ball_x - ball_radius;
       ball_rect.y=ball_y - ball_radius;
       //ellipse(renderer,ball_x,ball_y,ball_radius,ball_radius,100,0,100,1);//replace with image
-      SDL_RenderCopy(renderer, ball_texture, NULL, &ball_rect);
+      SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
 //ball
 
 
@@ -306,12 +307,12 @@ SDL_RenderPresent(renderer);
             case 0:
                   break;
             case 1:
-                  resetvalues();
+                  resetvalues(0);
                   SDL_DestroyTexture(m_img);
                   SDL_DestroyTexture(tir);
                   return play(renderer);//restart
             case 2:
-                  resetvalues();
+                  resetvalues(0);
                   SDL_DestroyTexture(m_img);
                   SDL_DestroyTexture(tir);
                   return ;//quit
@@ -605,19 +606,21 @@ void collision(SDL_Renderer* renderer){
       if((ball_y>590-ball_radius)&&ball_dy>0) ball_dy*=-0.7;  //kafe zamin
       if(ball_y<0+ball_radius&&ball_dy<0) ball_dy*=-1;      //khorde be saghf
       if(ball_x<0+ball_radius&&ball_dx<0) ball_dx*=-1;      //chape safhe
-      if((ball_y<390&&ball_y>360)&&(ball_x<120 || ball_x>1110)) ball_dy*=-1; //tir ofoghi
+      if((ball_y<390 && ball_y>360) && (ball_x<120 || ball_x>1110)) {ball_y-=ball_dy;ball_dy*=-1;}//tir ofoghi
 //toop va divar ha
 
 //kale va toop
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
          (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
-         && sign(lhead_x-ball_x) == sign(ball_dx)){
+         && sign(lhead_x-ball_x) == sign(ball_dx) && lc_shoot<0){
             ball_dx *=-0.8;
             ball_dy *=-0.8;
             }
+
       if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
    (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
-   && sign(rhead_x-ball_x) == sign(ball_dx)){
+   && sign(rhead_x-ball_x) == sign(ball_dx) && rc_shoot<0){
+         if(ball_dx < 5) ball_dx += (rhead_x - ball_x) * 0.2;
       ball_dx *=-0.8;
       ball_dy *=-0.8;
       }
@@ -665,10 +668,10 @@ Rjump=0;
 }
       SDL_PumpEvents();
       if (state[SDL_SCANCODE_A] && lc_x>30) {
-          lc_x-=3.5;
+          lc_x-=6;
       }
-      if (state[SDL_SCANCODE_D]&&lc_x<1080) {
-          lc_x+=3.5;
+      if (state[SDL_SCANCODE_D]&&lc_x<1120 ) {
+          lc_x+=6;
       }
            if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
           Ljump=1;
@@ -676,10 +679,10 @@ Rjump=0;
       }
 
       if (state[SDL_SCANCODE_LEFT] && rc_x>30) {
-          rc_x-=3.5;
+          rc_x-=6;
       }
-      if (state[SDL_SCANCODE_RIGHT]&&rc_x<1080) {
-          rc_x+=3.5;
+      if (state[SDL_SCANCODE_RIGHT]&&rc_x<1120) {
+          rc_x+=6;
       }
            if (state[SDL_SCANCODE_UP] && rc_y>=zamin_y - 500*rc_scale) {
           Rjump=1;
@@ -737,8 +740,7 @@ void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[])
     }
 }
 
-void resetvalues(){
-//restart kardan bazi
+void resetvalues(bool fullrestart){
 t=0;
 ball_x=200,ball_y=40,ball_radius=30,ball_dx=2,ball_ddx=0,ball_dy=50,ball_ddy=0.5, //toop
 lc_dy=0,lc_ddy=0.5,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;
@@ -748,32 +750,68 @@ if (a>=0) return 1;
 if (a<0)  return 0;
 }
 
-char checkshoot(int foot_x,int ,int foot_y,bool isLeftPlayer){
 
-//left player check
-if(isLeftPlayer){
-if(square(lc_foot_x(lhead_x,lc_scale) - ball_x) + square(lc_foot_y(lhead_y,lc_scale) - ball_y)
-   <=  square(100 * lc_scale)
-   )
-      return 'c';
-}
-
-}
 
 void shoot(){
-// pa va toop (shoot)
-if(rc_shoot>0) {
-     ball_dx = -10;
-     ball_dy = -2.5;
-     rc_shoot--;
-}
-if(lc_shoot>0) {
-     ball_dx = +10;
-     ball_dy = -2.5;
+
+//     cout<<square(ball_x-lc_foot_x(lhead_x,lc_scale))+ square(ball_y-lc_foot_y(lhead_y,lc_scale))<<endl;
+if(lc_shoot>-10) {
      lc_shoot--;
+      if((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
+         <=  ((shoot_radius + ball_radius) * lc_scale)*((shoot_radius+ball_radius) * lc_scale)) {
+
+               switch(checkshoot(ball_y-lc_foot_y(lhead_y,lc_scale)/ball_x-lc_foot_x(lhead_x,lc_scale))){
+                  case DEGREE15 :
+                        ball_dx = 15;
+                        ball_dy = -3.25;
+                        break;
+
+                  case DEGREE45 :
+                         ball_dx = 15;
+                         ball_dy = -15;
+                         break;
+                  case DEGREENEGATIVE15 :
+                         ball_dx=15;
+                         ball_dy=-3.75;
+
+               }
+
+     }
 }
+
+
+if(rc_shoot>-10) {
+      rc_shoot--;
+       if((rc_foot_x(rhead_x,rc_scale) - ball_x)*(rc_foot_x(rhead_x,rc_scale) - ball_x) + (rc_foot_y(rhead_y,rc_scale) - ball_y) * (rc_foot_y(rhead_y,rc_scale) - ball_y)
+         <=  ((shoot_radius + ball_radius) * rc_scale)*((shoot_radius+ball_radius) * rc_scale)) {
+                           switch(-checkshoot(ball_y-rc_foot_y(rhead_y,rc_scale)/ball_x-rc_foot_x(rhead_x,rc_scale))){
+                  case DEGREE15 :
+                        ball_dx = -15;
+                        ball_dy = -3.25;
+                        break;
+
+                  case DEGREE45 :
+                         ball_dx = -15;
+                         ball_dy = -15;
+                         break;
+                  case DEGREENEGATIVE15 :
+                         ball_dx=-15;
+                         ball_dy=-3.75;
+
+               }
+           }
+}
+
+
 //      ellipse(renderer,rc_foot_x(rhead_x,rc_scale),rc_foot_y(rhead_y,rc_scale),shoot_radius*lc_scale,shoot_radius*lc_scale,10,231,10,0);
 //      ellipse(renderer,lc_foot_x(lhead_x,lc_scale),lc_foot_y(lhead_y,lc_scale),shoot_radius*rc_scale,shoot_radius*rc_scale,10,231,10,0);
-//pa va toop(shoot)
+
+}
+
+short checkshoot(float tangent){
+
+if(tangent<0.15 && tangent>0) return DEGREE15;
+if(tangent>0.15 ) return DEGREE45;
+if(tangent<0 && tangent>-60) return DEGREENEGATIVE15;
 
 }
