@@ -21,10 +21,10 @@ using namespace std;
 void window_color(SDL_Renderer *Renderer, int R, int G, int B);
 void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, int fill_boolian );
 void ellipse(SDL_Renderer *Renderer, int x, int y, int Radius1, int Radius2, int R, int G, int B, int fill_boolian);
+void testellipse(int x,int y,int radius);
 void my_line(SDL_Renderer *Renderer, int x_1, int y_1, int L,double theta,int widht, int R, int G, int B );
 void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address); //used for loading pictures
 bool btn_clicked(int index, int mouse_x, int mouse_y);//checks if button is clicked by mouse
-void draw(SDL_Renderer* renderer);     //useless
 void collision(SDL_Renderer* renderer);//checks if 2 objects intersect
 void movement(SDL_Renderer* renderer);
 void cordinatefinder(); //used for debugging(prints mouse coordinates)
@@ -45,7 +45,8 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
 
 
 //global variables
-int fps=50,delay=1000/fps,rc_shoot=-10,lc_shoot=-10;
+int fps=50,delay=1000/fps;
+int rc_shoot=-10,lc_shoot=-10 ,lc_power = 0,rc_power=0; // timers
 long long int t=0;      // time(increases when every frame is shown
 const int nbtn = 50,zamin_y=590;
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
@@ -53,6 +54,8 @@ bool Ljump;
 bool Rjump;
 const char* ume_picAddress [] = {"1.jpg" , "2.jpg" ,"3.jpg"}; //address of pictures for start menu
 const Uint8 *state = SDL_GetKeyboardState(NULL);
+const char* players_rc[]= {"1rc.png", "2rc.png", "3rc.png"};
+const char* players_lc[]= {"1lc.png", "2lc.png", "3lc.png"};
 
 SDL_Event *event = new SDL_Event();
 SDL_Renderer* renderer;
@@ -62,6 +65,8 @@ float ball_x=200,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_dd
       lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                //character chap
       ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=700,rc_y=zamin_y-500*rc_scale,//character rast
       rhead_x=210*rc_scale+rc_x,rhead_y=165*rc_scale+rc_y;               //character rast
+
+int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0;
 
 
 int main( int argc, char * argv[] )
@@ -192,7 +197,7 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
 
 void play(SDL_Renderer* renderer){
 bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
-//load kardan pas zamine
+//load kardan aks ha
        SDL_Rect img_rect;
        SDL_Texture* m_img = NULL;
        m_img = IMG_LoadTexture(renderer,"a.png");
@@ -211,10 +216,10 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
 
        SDL_Rect lc_rect;
        SDL_Texture* lc_texture = NULL;
-       lc_texture = IMG_LoadTexture(renderer,"1norm.png");
+       lc_texture = IMG_LoadTexture(renderer,"1lc.png");
        SDL_Rect rc_rect;
        SDL_Texture* rc_texture = NULL;
-       rc_texture = IMG_LoadTexture(renderer,"1norml.png");
+       rc_texture = IMG_LoadTexture(renderer,"1rc.png");
        lc_rect.w = 350 * lc_scale;
        lc_rect.h = 500 * lc_scale;
        rc_rect.w = 350 * lc_scale;
@@ -222,7 +227,7 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
 
        SDL_Rect ball_rect;
        SDL_Texture* ball_texture = NULL;
-       ball_texture = IMG_LoadTexture(renderer,"ball.png");
+       ball_texture = IMG_LoadTexture(renderer,"ball1.png");
        ball_rect.w = ball_radius * 2;
        ball_rect.h = ball_radius * 2;
        SDL_Point ball_point={ball_radius,ball_radius};
@@ -242,7 +247,7 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
        right_foot_rect.w=300*lc_scale;
        SDL_Point right_foot_axle={350 * rc_scale/2,20};
 
-//load kardan pas zamine
+//load kardan aks ha
 
 
 while(1){
@@ -251,8 +256,6 @@ picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
 SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
 movement(renderer);
 collision(renderer);
-
-
 
 
 //left player
@@ -283,7 +286,7 @@ if(state[SDL_SCANCODE_SLASH] && rc_shoot==-10 ){
 if(rc_shoot>0){
       right_foot_rect.x=rhead_x-220*rc_scale;
       right_foot_rect.y=rhead_y+120*rc_scale;
-//      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
+      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
       SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
 }
       shoot();
@@ -386,12 +389,10 @@ void tutorial(SDL_Renderer* renderer){
 
 void setting(SDL_Renderer* renderer){
 
-const char* players[]= {"1norm.png", "2norm.png", "3norm.png"};
+
 int lc_x=200 ,lc_y=300 ,rc_x=800 ,rc_y=300 ;
 int rc_size=200 ,lc_size=200 ;
-short numberofpics=sizeof(players)/sizeof(players[0]);
-short int index_player_L=0;
-short int index_player_R=0;
+short numberofpics=sizeof(players_rc)/sizeof(players_rc[0]);
 window_color(renderer,10,20,30);
 SDL_Event *e = new SDL_Event();
 while(1)
@@ -403,43 +404,59 @@ while(1)
             switch(e->key.keysym.sym)
             {
                 case SDLK_a:
-                    if(index_player_L>=1)
-                        index_player_L--;
+                    if(lc_index>=1)
+                        lc_index--;
                     else
-                        index_player_L=numberofpics;
+                        lc_index=numberofpics-1;
                     break;
                 case SDLK_w:
+                    if(ball_index<numberofpics-1)
+                        ball_index++;
+                    else
+                        ball_index=0;
                     break;
                 case SDLK_s:
+                    if(ball_index>=1)
+                        ball_index--;
+                    else
+                        ball_index=numberofpics-1;
                     break;
                 case SDLK_d:
-                    if(index_player_L<numberofpics-1)
-                        index_player_L++;
+                    if(lc_index<numberofpics-1)
+                        lc_index++;
                     else
-                        index_player_L=0;
+                        lc_index=0;
                     break;
                 case SDLK_LEFT:
-                    if(index_player_R>=1)
-                        index_player_R--;
+                    if(rc_index>=1)
+                        rc_index--;
                     else
-                        index_player_R=numberofpics;
+                        rc_index=numberofpics-1;
                     break;
                 case SDLK_RIGHT:
-                    if(index_player_R<numberofpics-1)
-                        index_player_R++;
+                    if(rc_index<numberofpics-1)
+                        rc_index++;
                     else
-                        index_player_R=0;
+                        rc_index=0;
                     break;
                 case SDLK_UP:
+                    if(field_index<numberofpics-1)
+                        field_index++;
+                    else
+                        field_index=0;
                     break;
                 case SDLK_DOWN:
+                    if(field_index>=1)
+                        field_index--;
+                    else
+                        field_index=numberofpics-1;
                     break;
             }
         }
     }
     SDL_RenderPresent(renderer);
-    picLoader(renderer,rc_x,rc_y,rc_size,rc_size,players[index_player_R]);
-    picLoader(renderer,lc_x,lc_y,lc_size,lc_size,players[index_player_L]);
+    picLoader(renderer,rc_x,rc_y,rc_size,rc_size,players_rc[rc_index]);
+    picLoader(renderer,lc_x,lc_y,lc_size,lc_size,players_lc[lc_index]);
 }
 SDL_RenderPresent(renderer);
 
@@ -595,10 +612,7 @@ void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const ch
       //loading images
 
 }
-void draw(SDL_Renderer* renderer){
-//picLoader(renderer,lc_x,lc_y,350*lc_scale,500*lc_scale,"1norm.png");
-//picLoader(renderer,rc_x,rc_y,350*rc_scale,500*rc_scale,"1norml.png");
-}
+
 
 void collision(SDL_Renderer* renderer){
 //toop va divar ha
@@ -611,7 +625,7 @@ void collision(SDL_Renderer* renderer){
 
 //kale va toop
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
-         (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
+         (ball_radius + 80*lc_scale) * (ball_radius + 80*lc_scale)
          && sign(lhead_x-ball_x) == sign(ball_dx) && lc_shoot<0){
             ball_dx *=-0.8;
             ball_dy *=-0.8;
@@ -627,15 +641,23 @@ void collision(SDL_Renderer* renderer){
 //kale va toop
 
 //badan va toop
-if(ball_x>rc_x  &&  ball_x <rc_x + 100*rc_scale && ball_y>rc_y && ball_y<rc_y + 500*rc_scale &&  ball_dx > 0)
-      ball_dx=-2;//barkhorde toop be chape badan
-if(ball_x<rc_x+350*rc_scale && ball_x > rc_x + 200*rc_scale && ball_y>rc_y && ball_y<rc_y + 500*rc_scale && ball_dx < 0)
-      ball_dx=2;
+
+
+if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
+      if(1)
+            ball_dx =  -(6/(0.2+sqrt(0.2 * (rhead_x - ball_x))));
+}
+
+if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
+      if(1)
+            ball_dx = (6/(0.2+sqrt(0.2 * (rhead_x - ball_x))));
+}
+cout<<ball_dx<<endl;
 
 if(ball_x>lc_x  &&  ball_x <lc_x + 100*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale &&  ball_dx > 0)
-      ball_dx*=-1;
+      ball_dx*=-0.8;
 if(ball_x<lc_x+350*lc_scale && ball_x > lc_x + 200*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale && ball_dx < 0)
-      ball_dx*=-1;
+      ball_dx*=-0.8;
 //badan va toop
 
 }
@@ -644,6 +666,7 @@ void movement(SDL_Renderer* renderer){
 //      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_radius) {ball_ddy=0;ball_dy=0;ball_y=590-ball_radius;}
 ball_x+=ball_dx;              //kinematic toop
 ball_dx+=ball_ddx;            //kinematic toop
+
 lhead_x=185*lc_scale+lc_x;    //kale donbale badan biad
 lhead_y=165*lc_scale+lc_y;    //kale donbale badan biad
 
@@ -655,13 +678,13 @@ ball_y+=ball_dy;
 ball_dy+=ball_ddy;
 }
 
-if(lc_y<zamin_y - 500*lc_scale|| Ljump){
+if(lc_y<zamin_y - 500*lc_scale || Ljump){
 lc_y+=lc_dy;
 lc_dy+=lc_ddy;
 Ljump=0;
 }
 
-if(rc_y<zamin_y - 500*rc_scale|| Rjump){
+if(rc_y<zamin_y - 500*rc_scale || Rjump){
 rc_y+=rc_dy;
 rc_dy+=rc_ddy;
 Rjump=0;
@@ -670,7 +693,7 @@ Rjump=0;
       if (state[SDL_SCANCODE_A] && lc_x>30) {
           lc_x-=6;
       }
-      if (state[SDL_SCANCODE_D]&&lc_x<1120 ) {
+      if (state[SDL_SCANCODE_D]&&lc_x<1120 && lc_x+300*lc_scale < rc_x) {
           lc_x+=6;
       }
            if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
@@ -678,7 +701,7 @@ Rjump=0;
           lc_dy=-15;
       }
 
-      if (state[SDL_SCANCODE_LEFT] && rc_x>30) {
+      if (state[SDL_SCANCODE_LEFT] && rc_x>30 && lc_x+300*lc_scale < rc_x) {
           rc_x-=6;
       }
       if (state[SDL_SCANCODE_RIGHT]&&rc_x<1120) {
@@ -688,6 +711,7 @@ Rjump=0;
           Rjump=1;
           rc_dy=-15;
       }
+
 }
 
 
@@ -813,5 +837,9 @@ short checkshoot(float tangent){
 if(tangent<0.15 && tangent>0) return DEGREE15;
 if(tangent>0.15 ) return DEGREE45;
 if(tangent<0 && tangent>-60) return DEGREENEGATIVE15;
+
+}
+void testellipse(int x,int y,int radius){
+ellipse(renderer,x,y,radius,radius,120,123,123,1);
 
 }
