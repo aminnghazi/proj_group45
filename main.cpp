@@ -15,6 +15,7 @@
 #define DEGREE15 1
 #define DEGREE45 2
 #define DEGREENEGATIVE15 3
+#define square(x) x*x
 
 using namespace std;
 //action functions
@@ -46,7 +47,7 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
 
 //global variables
 int fps=50,delay=1000/fps;
-int rc_shoot=-10,lc_shoot=-10 ,lc_power = 0,rc_power=0; // timers
+int rc_shoot=-20,lc_shoot=-20 ,lc_power = 0,rc_power=0; // timers
 long long int t=0;      // time(increases when every frame is shown
 const int nbtn = 50,zamin_y=590;
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
@@ -60,7 +61,7 @@ const char* players_lc[]= {"1lc.png", "2lc.png", "3lc.png"};
 SDL_Event *event = new SDL_Event();
 SDL_Renderer* renderer;
 
-float ball_x=200,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
+float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
       lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,//character chap
       lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                //character chap
       ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=700,rc_y=zamin_y-500*rc_scale,//character rast
@@ -271,7 +272,7 @@ collision(renderer);
 //right player
 
 //shooting
-if(state[SDL_SCANCODE_E] && lc_shoot==-10){
+if(state[SDL_SCANCODE_E] && lc_shoot==-20){
      lc_shoot=8;
      }
 if(lc_shoot>0){
@@ -280,13 +281,13 @@ if(lc_shoot>0){
       SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(-50 + (lc_shoot)*(lc_shoot)),&left_foot_axle,SDL_FLIP_NONE);
 }
 
-if(state[SDL_SCANCODE_SLASH] && rc_shoot==-10 ){
+if(state[SDL_SCANCODE_SLASH] && rc_shoot==-20 ){
      rc_shoot=8;
      }
 if(rc_shoot>0){
       right_foot_rect.x=rhead_x-220*rc_scale;
       right_foot_rect.y=rhead_y+120*rc_scale;
-      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
+//      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
       SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
 }
       shoot();
@@ -616,62 +617,62 @@ void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const ch
 
 void collision(SDL_Renderer* renderer){
 //toop va divar ha
-      if(ball_x>1280-ball_radius&&ball_dx>0) ball_dx*=-1;   //raste safhe
+      if(ball_x>1280-ball_radius&&ball_dx>0) ball_dx*=-0.9;   //raste safhe
       if((ball_y>590-ball_radius)&&ball_dy>0) ball_dy*=-0.7;  //kafe zamin
       if(ball_y<0+ball_radius&&ball_dy<0) ball_dy*=-1;      //khorde be saghf
-      if(ball_x<0+ball_radius&&ball_dx<0) ball_dx*=-1;      //chape safhe
+      if(ball_x<0+ball_radius&&ball_dx<0) ball_dx*=-0.9;      //chape safhe
       if((ball_y<390 && ball_y>360) && (ball_x<120 || ball_x>1110)) {ball_y-=ball_dy;ball_dy*=-1;}//tir ofoghi
 //toop va divar ha
 
 //kale va toop
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
-         (ball_radius + 80*lc_scale) * (ball_radius + 80*lc_scale)
-         && sign(lhead_x-ball_x) == sign(ball_dx) && lc_shoot<0){
+         (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
+         && ball_dx!=15){
             ball_dx *=-0.8;
             ball_dy *=-0.8;
-            }
+      }
 
       if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
    (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
-   && sign(rhead_x-ball_x) == sign(ball_dx) && rc_shoot<0){
+   && ball_dx != -15){
          if(ball_dx < 5) ball_dx += (rhead_x - ball_x) * 0.2;
       ball_dx *=-0.8;
       ball_dy *=-0.8;
       }
 //kale va toop
-
-//badan va toop
-
-
-if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
-      if(1)
-            ball_dx =  -(6/(0.2+sqrt(0.2 * (rhead_x - ball_x))));
-}
-
-if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
-      if(1)
-            ball_dx = (6/(0.2+sqrt(0.2 * (rhead_x - ball_x))));
-}
-cout<<ball_dx<<endl;
-
-if(ball_x>lc_x  &&  ball_x <lc_x + 100*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale &&  ball_dx > 0)
-      ball_dx*=-0.8;
-if(ball_x<lc_x+350*lc_scale && ball_x > lc_x + 200*lc_scale && ball_y>lc_y && ball_y<lc_y + 500*lc_scale && ball_dx < 0)
-      ball_dx*=-0.8;
-//badan va toop
+//
+////badan va toop
+//
+//if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y + 250*rc_scale){
+////chape badane rasti
+//      if(ball_dx != -15)
+//            ball_dx =  -(6/(0.2+(0.2 * (rhead_x - ball_x))));
+//}
+////if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
+//////raste badane rasti
+////            ball_dx = (6/(0.2+(0.2 * (rhead_x - ball_x))));
+////}
+////if(ball_x < lhead_x && ball_x > lhead_x - 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y){
+//////chape badane chapi
+////            ball_dx =  -(6/(0.2+(0.2 * (lhead_x - ball_x))));
+////
+////}
+//if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y + 250*lc_scale){
+////raste badane chapi
+//      if(ball_dx != 15)
+//                  ball_dx = (6/(0.2+sqrt(0.2 * (ball_x - lhead_x))));
+//}
+//
+////badan va toop
 
 }
 
 void movement(SDL_Renderer* renderer){
 //      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_radius) {ball_ddy=0;ball_dy=0;ball_y=590-ball_radius;}
-ball_x+=ball_dx;              //kinematic toop
-ball_dx+=ball_ddx;            //kinematic toop
+ball_x+=ball_dx;              //harekat toop
+ball_dx+=ball_ddx;            //harekat toop
 
-lhead_x=185*lc_scale+lc_x;    //kale donbale badan biad
-lhead_y=165*lc_scale+lc_y;    //kale donbale badan biad
 
-rhead_x=210*rc_scale+rc_x;    //kale donbale badan biad
-rhead_y=165*rc_scale+rc_y;    //kale donbale badan biad
 
 if(ball_y<zamin_y){
 ball_y+=ball_dy;
@@ -689,6 +690,13 @@ rc_y+=rc_dy;
 rc_dy+=rc_ddy;
 Rjump=0;
 }
+
+lhead_x=185*lc_scale+lc_x;    //kale donbale badan biad
+lhead_y=165*lc_scale+lc_y;    //kale donbale badan biad
+
+rhead_x=210*rc_scale+rc_x;    //kale donbale badan biad
+rhead_y=165*rc_scale+rc_y;    //kale donbale badan biad
+
       SDL_PumpEvents();
       if (state[SDL_SCANCODE_A] && lc_x>30) {
           lc_x-=6;
@@ -779,7 +787,7 @@ if (a<0)  return 0;
 void shoot(){
 
 //     cout<<square(ball_x-lc_foot_x(lhead_x,lc_scale))+ square(ball_y-lc_foot_y(lhead_y,lc_scale))<<endl;
-if(lc_shoot>-10) {
+if(lc_shoot>-20) {
      lc_shoot--;
       if((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
          <=  ((shoot_radius + ball_radius) * lc_scale)*((shoot_radius+ball_radius) * lc_scale)) {
@@ -804,7 +812,7 @@ if(lc_shoot>-10) {
 }
 
 
-if(rc_shoot>-10) {
+if(rc_shoot>-20) {
       rc_shoot--;
        if((rc_foot_x(rhead_x,rc_scale) - ball_x)*(rc_foot_x(rhead_x,rc_scale) - ball_x) + (rc_foot_y(rhead_y,rc_scale) - ball_y) * (rc_foot_y(rhead_y,rc_scale) - ball_y)
          <=  ((shoot_radius + ball_radius) * rc_scale)*((shoot_radius+ball_radius) * rc_scale)) {
