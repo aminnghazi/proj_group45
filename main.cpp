@@ -15,7 +15,17 @@
 #define DEGREE15 1
 #define DEGREE45 2
 #define DEGREENEGATIVE15 3
+#define power_cooldown 100
 #define square(x) x*x
+#define numberOfPowers 4
+#define fps 50
+
+enum powers{
+PUNCH,
+THIEF,
+KICK_FIRE_BALL,
+INVISIBLE_BALL
+};
 
 using namespace std;
 //action functions
@@ -34,8 +44,9 @@ string intToString(int a);
 void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[]);//used in pause menu
 void shoot(); // this function is called when shoot button is pressed
 short checkshoot(float tangent);// checks angle of shooting
-bool sign(int a);//returns sign of a number(0 if negative)
-
+void print_one_digit(int X,int Y,int R);
+void print_two_digits(int x,int y,int r);
+void special_powers(bool leftCharacter);
 
 //stage functions
 short startMenu(SDL_Renderer* renderer,int page_width,int page_height);
@@ -46,20 +57,29 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
 
 
 //global variables
-int fps=50,delay=1000/fps;
-int rc_shoot=-20,lc_shoot=-20 ,lc_power = 0,rc_power=0; // timers
-long long int t=0;      // time(increases when every frame is shown
 const int nbtn = 50,zamin_y=590;
+int delay=1000/fps;
+
+int rc_shoot=-20,lc_shoot=-20;
+long long int t=0;      // time(increases when every frame is shown
+float lc_power_timer = 0,rc_power_timer = 0 , lc_punching_timer = 0
+,rc_punching_timer = 0 , lc_freezing_timer = 0 , rc_freezing_timer = 0
+,invisible_ball_timer = 0 ,lc_kick_fire_timer = 0 , rc_kick_fire_timer = 0; // timers
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
 bool Ljump;
 bool Rjump;
-const char* ume_picAddress [] = {"1.jpg" , "2.jpg" ,"3.jpg"}; //address of pictures for start menu
-const Uint8 *state = SDL_GetKeyboardState(NULL);
-const char* players_rc[]= {"1rc.png", "2rc.png", "3rc.png"};
-const char* players_lc[]= {"1lc.png", "2lc.png", "3lc.png"};
 
+const char* ume_picAddress [] = {"1.jpg" , "2.jpg" ,"3.jpg"};//address
+const char* players_rc[]= {"1rc.png", "2rc.png", "3rc.png"}; //address
+const char* players_lc[]= {"1lc.png", "2lc.png", "3lc.png"}; //address
+const char* fields[]= {"a.png", "b.png", "c.png", "d.png"};  //address
+const char* balls[]= {"ball1.png", "ball2.png"};             //address
+
+//Aimation_timer anime_timer;
 SDL_Event *event = new SDL_Event();
 SDL_Renderer* renderer;
+const Uint8 *state = SDL_GetKeyboardState(NULL);
+
 
 float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
       lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,//character chap
@@ -67,8 +87,31 @@ float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_dd
       ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=700,rc_y=zamin_y-500*rc_scale,//character rast
       rhead_x=210*rc_scale+rc_x,rhead_y=165*rc_scale+rc_y;               //character rast
 
-int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0;
+int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0 , lc_power_index = 2 ,rc_power_index=2;
 
+SDL_Rect punch_rect;
+SDL_Texture* punch_img = NULL;
+SDL_Rect rpunch_rect;
+SDL_Texture* rpunch_img = NULL;
+SDL_Rect qmark_rect;
+SDL_Texture* qmark_img = NULL;
+SDL_Rect img_rect;
+SDL_Texture* m_img = NULL;
+SDL_Rect ltr_fire_rect;
+SDL_Texture* ltr_fire_img = NULL;
+SDL_Rect rtl_fire_rect;
+SDL_Texture* rtl_fire_img = NULL;
+SDL_Rect ball_rect;
+SDL_Texture* ball_texture = NULL;
+
+float ease_quintOut(float start_coord,float end_coord,int currentTime,int duration){
+      //starts quickly, slowing down as the animation continues.
+	  //seyed mohammad amin ghazi asgar
+float time = currentTime;
+time /= duration;
+time--;
+return (end_coord-start_coord)*(time*time*time*time*time + 1) + start_coord;
+}
 
 int main( int argc, char * argv[] )
 {
@@ -137,7 +180,6 @@ void my_line(SDL_Renderer *Renderer, int x_1, int y_1, int L, double theta,int w
 
 
 void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, int fill_boolian )
-
 {
     SDL_Rect rectangle ;
     rectangle.x = x;
@@ -146,7 +188,7 @@ void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, i
     rectangle.h = h;
     SDL_SetRenderDrawColor(Renderer, R, G, B, 255);
     if (fill_boolian==1)
-        SDL_RenderFillRect(Renderer, &rectangle);
+    SDL_RenderFillRect(Renderer, &rectangle);
     SDL_RenderDrawRect(Renderer, &rectangle);
 }
 
@@ -161,7 +203,6 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
       info_x=876,info_y=470,info_size=150,
       mouse_x,mouse_y;
       bool changeMade=1;
-
       btn_array[10][0]=stbtn_x;btn_array[10][1]=stbtn_y;   //start button
       btn_array[10][2]=stbtn_x+stbtn_size;btn_array[10][3]=stbtn_y+stbtn_size;
       btn_array[11][0]=stng_x,btn_array[11][1]=stng_y;         //setting button
@@ -198,9 +239,9 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
 
 void play(SDL_Renderer* renderer){
 bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
+int rc_goals = 0 ,lc_goals =0;
+cout<<INVISIBLE_BALL;
 //load kardan aks ha
-       SDL_Rect img_rect;
-       SDL_Texture* m_img = NULL;
        m_img = IMG_LoadTexture(renderer,"a.png");
        img_rect.x = 0;        //pictures coordinates
        img_rect.y = 0;        //pictures coordinates
@@ -226,8 +267,6 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
        rc_rect.w = 350 * lc_scale;
        rc_rect.h = 500 * lc_scale;
 
-       SDL_Rect ball_rect;
-       SDL_Texture* ball_texture = NULL;
        ball_texture = IMG_LoadTexture(renderer,"ball1.png");
        ball_rect.w = ball_radius * 2;
        ball_rect.h = ball_radius * 2;
@@ -248,57 +287,164 @@ bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
        right_foot_rect.w=300*lc_scale;
        SDL_Point right_foot_axle={350 * rc_scale/2,20};
 
+       punch_img  = IMG_LoadTexture(renderer,"punch.png");
+       rpunch_img = IMG_LoadTexture(renderer,"punch_right.png");
+       qmark_img  = IMG_LoadTexture(renderer,"qmark.png");
+       rtl_fire_img= IMG_LoadTexture(renderer,"rtlFireball.png");
+       ltr_fire_img= IMG_LoadTexture(renderer,"ltrFireball.png");
+
 //load kardan aks ha
 
 
 while(1){
-picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
-//cordinatefinder();//comment this line in final version
-SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
-movement(renderer);
-collision(renderer);
-
-
-//left player
-      lc_rect.x = lc_x;        //left player coordinates
-      lc_rect.y = lc_y;        //left player coordinates
-      SDL_RenderCopy(renderer,lc_texture, NULL, &lc_rect);
-//left player
-
-//right palyer
-      rc_rect.x = rc_x;        //left player coordinates
-      rc_rect.y = rc_y;        //left player coordinates
-      SDL_RenderCopy(renderer,rc_texture, NULL, &rc_rect);
-//right player
-
-//shooting
-if(state[SDL_SCANCODE_E] && lc_shoot==-20){
-     lc_shoot=8;
-     }
-if(lc_shoot>0){
-      left_foot_rect.x=lhead_x-15;
-      left_foot_rect.y=lhead_y+40;
-      SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(-50 + (lc_shoot)*(lc_shoot)),&left_foot_axle,SDL_FLIP_NONE);
-}
-
-if(state[SDL_SCANCODE_SLASH] && rc_shoot==-20 ){
-     rc_shoot=8;
-     }
-if(rc_shoot>0){
-      right_foot_rect.x=rhead_x-220*rc_scale;
-      right_foot_rect.y=rhead_y+120*rc_scale;
-//      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
-      SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
-}
+      //picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
+//      cordinatefinder();//comment this line in final version
+      SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
+      movement(renderer);
+      collision(renderer);
       shoot();
 
+      if(rc_freezing_timer > 0) rc_freezing_timer --;
+      if(lc_freezing_timer > 0) lc_freezing_timer --;
+      if(rc_power_timer < power_cooldown) rc_power_timer+=power_cooldown/100;
+      if(lc_power_timer < power_cooldown) lc_power_timer+=power_cooldown/100;
+      boxRGBA(renderer,510,0,160 + 350 * (lc_power_timer) / power_cooldown,60,0,0,0,120);
+      boxRGBA(renderer,767,0,1118 - 350 * (rc_power_timer) / power_cooldown,60,0,0,0,80);
+      print_two_digits(605,10,t/fps);
+
+      if(rc_freezing_timer > 0)
+      {
+            qmark_rect.x = rc_x + 50 * rc_scale;
+            qmark_rect.y = rc_y - 220 * rc_scale;
+            qmark_rect.w = 300 * (rc_scale );
+            qmark_rect.h = 300 * (rc_scale );
+            SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
+      }
+
+       if(lc_freezing_timer > 0)
+      {
+            qmark_rect.x = lc_x + 50 * rc_scale;
+            qmark_rect.y = lc_y - 220 * rc_scale;
+            qmark_rect.w = 300 * (lc_scale );
+            qmark_rect.h = 300 * (lc_scale );
+            SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
+      }
+
+      if(lc_punching_timer > 0) {
+            punch_rect.x=lc_x + 200 * lc_scale;
+            punch_rect.y=lc_y + 150 * lc_scale;
+            punch_rect.h=300 * lc_scale;
+            punch_rect.w=500 * square(lc_scale - lc_punching_timer);
+            SDL_RenderCopy(renderer,punch_img,NULL,&punch_rect);
+            lc_punching_timer--;
+      }
+
+       if(rc_punching_timer > 0) {
+            rpunch_rect.x=rc_x -  250 * rc_scale;
+            rpunch_rect.y=rc_y + 150 * rc_scale;
+            rpunch_rect.h=300 * rc_scale;
+            rpunch_rect.w=500 * square(rc_scale + rc_punching_timer);
+            SDL_RenderCopy(renderer,rpunch_img,NULL,&rpunch_rect);
+            rc_punching_timer--;
+      }
+
+      if(state[SDL_SCANCODE_Q] && lc_power_timer == power_cooldown && lc_freezing_timer == 0){
+                  //power chapi
+            switch(lc_power_index){
+                  case PUNCH:
+                        lc_power_timer = 0;
+                        lc_punching_timer = 8;
+                        if(rc_x - lc_x < 350 * lc_scale + 480 * square(lc_scale))
+                              rc_freezing_timer = 150; // rasti mosht khord
+                        break;
+                  case INVISIBLE_BALL:
+                        lc_power_timer = 0;
+                        if ((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
+                        <=  ((shoot_radius + ball_radius) * lc_scale)*((shoot_radius+ball_radius) * lc_scale)){
+                        lc_shoot = 8;
+                        invisible_ball_timer = fps * 2;
+                        }
+                        break;
+                  case KICK_FIRE_BALL:
+                        lc_kick_fire_timer =70;
+                        break;
+            }
+      }
+       if(state[SDL_SCANCODE_RSHIFT] && rc_power_timer == power_cooldown && rc_freezing_timer == 0){
+                 //power chapi
+            switch(rc_power_index){
+                  case PUNCH:
+                        rc_power_timer = 0;
+                        rc_punching_timer = 8;
+                        if(rc_x - lc_x < 350 * lc_scale + 480 * square(rc_scale))
+                              lc_freezing_timer = 150; // rasti mosht khord
+                        break;
+                  case INVISIBLE_BALL:
+                        rc_power_timer = 0;
+                         if((rc_foot_x(rhead_x,rc_scale) - ball_x)*(rc_foot_x(rhead_x,rc_scale) - ball_x) + (rc_foot_y(rhead_y,rc_scale) - ball_y) * (rc_foot_y(rhead_y,rc_scale) - ball_y)
+                        <=  ((shoot_radius + ball_radius) * rc_scale)*((shoot_radius+ball_radius) * rc_scale)){
+                        invisible_ball_timer = fps * 2;
+                        rc_shoot = 8;
+                        }
+                        break;
+                  case KICK_FIRE_BALL:
+                        rc_kick_fire_timer =70;
+                        break;
+            }
+            }
+
+
+      //left player
+            lc_rect.x = lc_x;        //left player coordinates
+            lc_rect.y = lc_y;        //left player coordinates
+            SDL_RenderCopy(renderer,lc_texture, NULL, &lc_rect);
+      //left player
+
+      //right palyer
+            rc_rect.x = rc_x;        //left player coordinates
+            rc_rect.y = rc_y;        //left player coordinates
+            SDL_RenderCopy(renderer,rc_texture, NULL, &rc_rect);
+      //right player
+
+      //shooting
+      if(state[SDL_SCANCODE_E] && lc_shoot==-20 && lc_freezing_timer ==0){
+           lc_shoot=8;
+           }
+      if(lc_shoot>0){
+            left_foot_rect.x=lhead_x-15;
+            left_foot_rect.y=lhead_y+40;
+            SDL_RenderCopyEx(renderer,left_foot_texture,NULL,&left_foot_rect,(-50 + (lc_shoot)*(lc_shoot)),&left_foot_axle,SDL_FLIP_NONE);
+      }
+
+      if(state[SDL_SCANCODE_SLASH] && rc_shoot==-20 && rc_freezing_timer == 0){
+           rc_shoot=8;
+           }
+      if(rc_shoot>0){
+            right_foot_rect.x=rhead_x-220*rc_scale;
+            right_foot_rect.y=rhead_y+120*rc_scale;
+      //      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
+            SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
+}
+
+
 //shooting
 
+
+
+
+
+
+
 //ball
-      ball_rect.x=ball_x - ball_radius;
-      ball_rect.y=ball_y - ball_radius;
-      //ellipse(renderer,ball_x,ball_y,ball_radius,ball_radius,100,0,100,1);//replace with image
-      SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
+      if(invisible_ball_timer > 0){
+         invisible_ball_timer--;
+      }
+
+      else if(lc_kick_fire_timer == 0 && rc_kick_fire_timer == 0){
+            ball_rect.x=ball_x - ball_radius;
+            ball_rect.y=ball_y - ball_radius;
+            SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
+      }
 //ball
 
 
@@ -312,15 +458,25 @@ SDL_RenderPresent(renderer);
                   break;
             case 1:
                   resetvalues(0);
-                  SDL_DestroyTexture(m_img);
+                  SDL_DestroyTexture(lc_texture);
+                  SDL_DestroyTexture(rc_texture);
+                  SDL_DestroyTexture(ball_texture);
+                  SDL_DestroyTexture(right_foot_texture);
+                  SDL_DestroyTexture(left_foot_texture);
                   SDL_DestroyTexture(tir);
                   return play(renderer);//restart
             case 2:
                   resetvalues(0);
-                  SDL_DestroyTexture(m_img);
+                  SDL_DestroyTexture(lc_texture);
+                  SDL_DestroyTexture(rc_texture);
+                  SDL_DestroyTexture(ball_texture);
+                  SDL_DestroyTexture(right_foot_texture);
+                  SDL_DestroyTexture(left_foot_texture);
                   SDL_DestroyTexture(tir);
                   return ;//quit
              }
+             testellipse(ball_x,ball_y,15);
+
 t++;
 SDL_Delay(delay);
 }
@@ -390,14 +546,22 @@ void tutorial(SDL_Renderer* renderer){
 
 void setting(SDL_Renderer* renderer){
 
+short numberofplayers=sizeof(players_rc)/sizeof(players_rc[0]);
+short numberofballs=sizeof(balls)/sizeof(balls[0]);
+short numberoffields=sizeof(fields)/sizeof(fields[0]);
 
-int lc_x=200 ,lc_y=300 ,rc_x=800 ,rc_y=300 ;
+int lc_x=380 ,lc_y=400 ,rc_x=690 ,rc_y=400 ;
 int rc_size=200 ,lc_size=200 ;
-short numberofpics=sizeof(players_rc)/sizeof(players_rc[0]);
+int ballpic_x=580 ,ballpic_y=80 ,ballpic_width=100 ,ballpic_height=100;
+int fieldpic_x=0 ,fieldpic_y=0 ,fieldpic_width=1280 ,fieldpic_height=800;
 window_color(renderer,10,20,30);
 SDL_Event *e = new SDL_Event();
+
 while(1)
 {
+      cout<<"r"<<rc_power_index<<endl<<"L"<<lc_power_index<<endl;
+
+//      cout<<ball_index<<endl;
     if(SDL_PollEvent(e))
     {
         if(e->type==SDL_KEYDOWN)
@@ -408,10 +572,10 @@ while(1)
                     if(lc_index>=1)
                         lc_index--;
                     else
-                        lc_index=numberofpics-1;
+                        lc_index=numberofplayers-1;
                     break;
                 case SDLK_w:
-                    if(ball_index<numberofpics-1)
+                    if(ball_index<numberofballs-1)
                         ball_index++;
                     else
                         ball_index=0;
@@ -420,10 +584,10 @@ while(1)
                     if(ball_index>=1)
                         ball_index--;
                     else
-                        ball_index=numberofpics-1;
+                        ball_index=numberofballs-1;
                     break;
                 case SDLK_d:
-                    if(lc_index<numberofpics-1)
+                    if(lc_index<numberofplayers-1)
                         lc_index++;
                     else
                         lc_index=0;
@@ -432,16 +596,16 @@ while(1)
                     if(rc_index>=1)
                         rc_index--;
                     else
-                        rc_index=numberofpics-1;
+                        rc_index=numberofplayers-1;
                     break;
                 case SDLK_RIGHT:
-                    if(rc_index<numberofpics-1)
+                    if(rc_index<numberofplayers-1)
                         rc_index++;
                     else
                         rc_index=0;
                     break;
                 case SDLK_UP:
-                    if(field_index<numberofpics-1)
+                    if(field_index<numberoffields-1)
                         field_index++;
                     else
                         field_index=0;
@@ -450,14 +614,47 @@ while(1)
                     if(field_index>=1)
                         field_index--;
                     else
-                        field_index=numberofpics-1;
+                        field_index=numberoffields-1;
                     break;
+                case SDLK_e:
+                     if(lc_power_index < numberOfPowers - 1)
+                        lc_power_index++;
+                     else
+                        lc_power_index = 0;
+                     break;
+
+                case SDLK_q:
+                     if(lc_power_index>=1)
+                        lc_power_index--;
+                     else
+                        lc_power_index=numberOfPowers-1;
+
+                case SDLK_RSHIFT:
+                     if(rc_power_index < numberOfPowers - 1)
+                          rc_power_index++;
+                     else
+                        rc_power_index = 0;
+                     break;
+
+                case SDLK_RCTRL:
+                     if(rc_power_index>=1)
+                        rc_power_index--;
+                     else
+                        rc_power_index=numberOfPowers-1;
+                     break;
+                case SDLK_ESCAPE:
+                    return;
             }
         }
     }
-    SDL_RenderPresent(renderer);
+
+//    window_color(renderer,10,20,30);
+    picLoader(renderer,fieldpic_x,fieldpic_y,fieldpic_width,fieldpic_height,fields[field_index]);
     picLoader(renderer,rc_x,rc_y,rc_size,rc_size,players_rc[rc_index]);
     picLoader(renderer,lc_x,lc_y,lc_size,lc_size,players_lc[lc_index]);
+    picLoader(renderer,ballpic_x,ballpic_y,ballpic_width,ballpic_height,balls[ball_index]);
+
+    SDL_RenderPresent(renderer);
 }
 SDL_RenderPresent(renderer);
 
@@ -628,6 +825,7 @@ void collision(SDL_Renderer* renderer){
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
          (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
          && ball_dx!=15){
+               //toop khord be kale chapi
             ball_dx *=-0.8;
             ball_dy *=-0.8;
       }
@@ -635,48 +833,72 @@ void collision(SDL_Renderer* renderer){
       if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
    (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
    && ball_dx != -15){
-         if(ball_dx < 5) ball_dx += (rhead_x - ball_x) * 0.2;
+        //toop khord be kale chapi
       ball_dx *=-0.8;
       ball_dy *=-0.8;
       }
 //kale va toop
-//
-////badan va toop
-//
-//if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y + 250*rc_scale){
-////chape badane rasti
-//      if(ball_dx != -15)
-//            ball_dx =  -(6/(0.2+(0.2 * (rhead_x - ball_x))));
-//}
-////if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
-//////raste badane rasti
-////            ball_dx = (6/(0.2+(0.2 * (rhead_x - ball_x))));
-////}
-////if(ball_x < lhead_x && ball_x > lhead_x - 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y){
-//////chape badane chapi
-////            ball_dx =  -(6/(0.2+(0.2 * (lhead_x - ball_x))));
-////
-////}
-//if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y + 250*lc_scale){
-////raste badane chapi
-//      if(ball_dx != 15)
-//                  ball_dx = (6/(0.2+sqrt(0.2 * (ball_x - lhead_x))));
-//}
-//
-////badan va toop
+
+//badan va toop
+
+if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y + 250*rc_scale){
+//chape badane rasti
+      if(ball_dx != -15)
+            ball_dx =  -(6/(0.2+(0.2 * (rhead_x - ball_x))));
+}
+                        //if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
+                        ////raste badane rasti
+                        //            ball_dx = (6/(0.2+(0.2 * (rhead_x - ball_x))));
+                        //}
+                        //if(ball_x < lhead_x && ball_x > lhead_x - 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y){
+                        ////chape badane chapi
+                        //            ball_dx =  -(6/(0.2+(0.2 * (lhead_x - ball_x))));
+                        //
+                        //}
+if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y + 250*lc_scale){
+//raste badane chapi
+      if(ball_dx != 15)
+                  ball_dx = (6/(0.2+sqrt(0.2 * (ball_x - lhead_x))));
+}
+
+//badan va toop
 
 }
 
 void movement(SDL_Renderer* renderer){
 //      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_radius) {ball_ddy=0;ball_dy=0;ball_y=590-ball_radius;}
-ball_x+=ball_dx;              //harekat toop
-ball_dx+=ball_ddx;            //harekat toop
 
+if(lc_kick_fire_timer > 0) {
+if(ball_x < 1200)ball_x +=10;
+if(rc_x < ball_x  && ball_x - rhead_x < 100) rc_x = ball_x;
+ltr_fire_rect.x = ball_x - ball_radius -100;
+ltr_fire_rect.y = ball_y - ball_radius -25;
+ltr_fire_rect.w = ball_rect.w + 100;
+ltr_fire_rect.h = ball_rect.h +60;
+lc_kick_fire_timer--;
+SDL_RenderCopy(renderer,ltr_fire_img,NULL,&ltr_fire_rect);
+}
+else if(rc_kick_fire_timer >0){
+if(ball_x >80)ball_x -=10;
+if(lc_x + 350*lc_scale > ball_x  && lhead_x - ball_x < 100) lc_x = ball_x;
+rtl_fire_rect.x = ball_x - ball_radius ;
+rtl_fire_rect.y = ball_y - ball_radius-25;
+rtl_fire_rect.w = ball_rect.w + 100;
+rtl_fire_rect.h = ball_rect.h +60;
+rc_kick_fire_timer--;
 
+SDL_RenderCopy(renderer,rtl_fire_img,NULL,&rtl_fire_rect);
 
-if(ball_y<zamin_y){
-ball_y+=ball_dy;
-ball_dy+=ball_ddy;
+}
+
+else {
+      ball_x+=ball_dx;              //harekat toop
+      ball_dx+=ball_ddx;            //harekat toop
+
+      if(ball_y<zamin_y){
+      ball_y+=ball_dy;
+      ball_dy+=ball_ddy;
+      }
 }
 
 if(lc_y<zamin_y - 500*lc_scale || Ljump){
@@ -698,27 +920,31 @@ rhead_x=210*rc_scale+rc_x;    //kale donbale badan biad
 rhead_y=165*rc_scale+rc_y;    //kale donbale badan biad
 
       SDL_PumpEvents();
-      if (state[SDL_SCANCODE_A] && lc_x>30) {
-          lc_x-=6;
+      if(lc_freezing_timer ==0){
+            if (state[SDL_SCANCODE_A] && lc_x>30) {
+                lc_x-=6;
+            }
+            if (state[SDL_SCANCODE_D]&&lc_x<1120 && lc_x+300*lc_scale < rc_x) {
+                lc_x+=6;
+            }
+                 if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
+                Ljump=1;
+                lc_dy=-15;
+            }
       }
-      if (state[SDL_SCANCODE_D]&&lc_x<1120 && lc_x+300*lc_scale < rc_x) {
-          lc_x+=6;
-      }
-           if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
-          Ljump=1;
-          lc_dy=-15;
+      if(rc_freezing_timer == 0){
+            if (state[SDL_SCANCODE_LEFT] && rc_x>30 && lc_x+300*lc_scale < rc_x) {
+                rc_x-=6;
+            }
+            if (state[SDL_SCANCODE_RIGHT]&&rc_x<1120) {
+                rc_x+=6;
+            }
+                 if (state[SDL_SCANCODE_UP] && rc_y>=zamin_y - 500*rc_scale) {
+                Rjump=1;
+                rc_dy=-15;
+            }
       }
 
-      if (state[SDL_SCANCODE_LEFT] && rc_x>30 && lc_x+300*lc_scale < rc_x) {
-          rc_x-=6;
-      }
-      if (state[SDL_SCANCODE_RIGHT]&&rc_x<1120) {
-          rc_x+=6;
-      }
-           if (state[SDL_SCANCODE_UP] && rc_y>=zamin_y - 500*rc_scale) {
-          Rjump=1;
-          rc_dy=-15;
-      }
 
 }
 
@@ -777,12 +1003,6 @@ t=0;
 ball_x=200,ball_y=40,ball_radius=30,ball_dx=2,ball_ddx=0,ball_dy=50,ball_ddy=0.5, //toop
 lc_dy=0,lc_ddy=0.5,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;
 }
-bool sign(int a){
-if (a>=0) return 1;
-if (a<0)  return 0;
-}
-
-
 
 void shoot(){
 
@@ -800,7 +1020,7 @@ if(lc_shoot>-20) {
 
                   case DEGREE45 :
                          ball_dx = 15;
-                         ball_dy = -15;
+                         ball_dy = -12;
                          break;
                   case DEGREENEGATIVE15 :
                          ball_dx=15;
@@ -824,7 +1044,7 @@ if(rc_shoot>-20) {
 
                   case DEGREE45 :
                          ball_dx = -15;
-                         ball_dy = -15;
+                         ball_dy = -12;
                          break;
                   case DEGREENEGATIVE15 :
                          ball_dx=-15;
@@ -849,5 +1069,94 @@ if(tangent<0 && tangent>-60) return DEGREENEGATIVE15;
 }
 void testellipse(int x,int y,int radius){
 ellipse(renderer,x,y,radius,radius,120,123,123,1);
+}
+void print_one_digit(int X,int Y,int R){
+    if (R==0) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+40);
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+40);
+    }
+    if (R==1) {
+        SDL_RenderDrawLine(renderer, X+17, Y+40, X+17, Y+10);
+    }
+    if (R==2) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+5, Y+40);
+    }
+    if (R==3) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+40);
+    }
+    if (R==4) {
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+20);
+        SDL_RenderDrawLine(renderer, X+5, Y+20, X+30, Y+20);
+    }
+    if (R==5) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+25);
+        SDL_RenderDrawLine(renderer, X+30, Y+25, X+30, Y+40);
+    }
+    if (R==6) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+30, Y+25, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+40);
+    }
+    if (R==7) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+5, Y+40);
+    }
+    if (R==8) {
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+        SDL_RenderDrawLine(renderer, X+5, Y+25, X+30, Y+25);
+        SDL_RenderDrawLine(renderer, X+5, Y+40, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+40);
+    }
+    if (R==9) {
+        SDL_RenderDrawLine(renderer, X+30, Y+10, X+30, Y+40);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+5, Y+20);
+        SDL_RenderDrawLine(renderer, X+5, Y+20, X+30, Y+20);
+        SDL_RenderDrawLine(renderer, X+5, Y+10, X+30, Y+10);
+    }
+}
+
+void print_two_digits(int x,int y,int r){
+print_one_digit(x+30, y , r%10);
+print_one_digit(x , y , (r/10) % 10);
+}
+
+void special_powers(bool leftCharacter){
+            SDL_RenderCopy(renderer,punch_img,NULL,&punch_rect);
+
+if(leftCharacter && lc_power_timer == 350){
+switch(lc_power_index){
+      case PUNCH:
+            SDL_RenderCopy(renderer,punch_img,NULL,&punch_rect);
+
+
 
 }
+
+//else{
+//
+//
+//
+//
+//}
+
+
+}
+}
+
+
