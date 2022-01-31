@@ -47,6 +47,8 @@ short checkshoot(float tangent);// checks angle of shooting
 void print_one_digit(int X,int Y,int R);
 void print_two_digits(int x,int y,int r);
 void special_powers(bool leftCharacter);
+void loadgame();
+void goal(bool left); // if left = 1 means that left player scored a goal and if 0 right player...
 
 //stage functions
 short startMenu(SDL_Renderer* renderer,int page_width,int page_height);
@@ -62,9 +64,6 @@ int delay=1000/fps;
 
 int rc_shoot=-20,lc_shoot=-20;
 long long int t=0;      // time(increases when every frame is shown
-float lc_power_timer = 0,rc_power_timer = 0 , lc_punching_timer = 0
-,rc_punching_timer = 0 , lc_freezing_timer = 0 , rc_freezing_timer = 0
-,invisible_ball_timer = 0 ,lc_kick_fire_timer = 0 , rc_kick_fire_timer = 0; // timers
 int btn_array[nbtn][4]; // X0, Y0, X1, Y1
 bool Ljump;
 bool Rjump;
@@ -72,8 +71,12 @@ bool Rjump;
 const char* ume_picAddress [] = {"1.jpg" , "2.jpg" ,"3.jpg"};//address
 const char* players_rc[]= {"1rc.png", "2rc.png", "3rc.png"}; //address
 const char* players_lc[]= {"1lc.png", "2lc.png", "3lc.png"}; //address
+const char* shoes_rc[]= {"1shoe.png", "2shoe.png", "3shoe.png"}; //address
+const char* shoes_lc[]= {"1shoel.png", "2shoel.png", "3shoel.png"}; //address
+
 const char* fields[]= {"a.png", "b.png", "c.png", "d.png"};  //address
 const char* balls[]= {"ball1.png", "ball2.png"};             //address
+
 
 //Aimation_timer anime_timer;
 SDL_Event *event = new SDL_Event();
@@ -82,12 +85,16 @@ const Uint8 *state = SDL_GetKeyboardState(NULL);
 
 
 float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
-      lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,//character chap
-      lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                //character chap
-      ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=700,rc_y=zamin_y-500*rc_scale,//character rast
-      rhead_x=210*rc_scale+rc_x,rhead_y=165*rc_scale+rc_y;               //character rast
+      lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=165,lc_y=zamin_y-500*lc_scale,         //character chap
+      lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                                             //character chap
+      ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=1000,rc_y=zamin_y-500*rc_scale,//character rast
+      rhead_x=210*rc_scale+rc_x,rhead_y=165*rc_scale+rc_y;                                       //character rast
 
-int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0 , lc_power_index = 2 ,rc_power_index=2;
+float lc_power_timer = 0,rc_power_timer = 0 , lc_punching_timer = 0     //timers
+,rc_punching_timer = 0 , lc_freezing_timer = 0 , rc_freezing_timer = 0     //timers
+,invisible_ball_timer = 0 ,lc_kick_fire_timer = 0 , rc_kick_fire_timer = 0; // timers
+int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0 , lc_power_index = 2 ,rc_power_index=2;//power ha
+int rc_goals = 0 ,lc_goals =0;
 
 SDL_Rect punch_rect;
 SDL_Texture* punch_img = NULL;
@@ -103,15 +110,20 @@ SDL_Rect rtl_fire_rect;
 SDL_Texture* rtl_fire_img = NULL;
 SDL_Rect ball_rect;
 SDL_Texture* ball_texture = NULL;
+SDL_Rect tir_rect;
+SDL_Texture* tir = NULL;
+SDL_Rect lc_rect;
+SDL_Texture* lc_texture = NULL;
+SDL_Rect rc_rect;
+SDL_Texture* rc_texture = NULL;
+SDL_Rect left_foot_rect;
+SDL_Texture* left_foot_texture = NULL;
+SDL_Rect right_foot_rect;
+SDL_Texture* right_foot_texture = NULL;
+SDL_Point left_foot_axle={10,20};
+SDL_Point right_foot_axle={350 * rc_scale/2,20};
+SDL_Point ball_point={ball_radius,ball_radius};
 
-float ease_quintOut(float start_coord,float end_coord,int currentTime,int duration){
-      //starts quickly, slowing down as the animation continues.
-	  //seyed mohammad amin ghazi asgar
-float time = currentTime;
-time /= duration;
-time--;
-return (end_coord-start_coord)*(time*time*time*time*time + 1) + start_coord;
-}
 
 int main( int argc, char * argv[] )
 {
@@ -201,6 +213,7 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
       int stng_x=880,stng_y=280,stng_size=150,
       stbtn_x=870,stbtn_y=70,stbtn_size=170,
       info_x=876,info_y=470,info_size=150,
+      exitbtn_x=1180,exitbtn_y=0,exitbtn_size=90,
       mouse_x,mouse_y;
       bool changeMade=1;
       btn_array[10][0]=stbtn_x;btn_array[10][1]=stbtn_y;   //start button
@@ -209,6 +222,8 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
       btn_array[11][2]=stng_x+stng_size;btn_array[11][3]=stng_y+stng_size;
       btn_array[14][0]=info_x;btn_array[14][1]=info_y; //guide button
       btn_array[14][2]=info_x+info_size;btn_array[14][3]=info_y+info_size;
+      btn_array[15][0]=exitbtn_x;btn_array[15][1]=exitbtn_y; //exit button
+      btn_array[15][2]=exitbtn_x+exitbtn_size;btn_array[15][3]=exitbtn_y+exitbtn_size;
       //note that btn_array  [15] is reserved for start menu for adding more buttons
       SDL_Delay(100);
       while(1){
@@ -217,14 +232,17 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
             if(btn_clicked(10,mouse_x,mouse_y)) return 0; //start got clicked
             if(btn_clicked(11,mouse_x,mouse_y)) return 2; //setting got clicked
             if(btn_clicked(14,mouse_x,mouse_y)) return 1; //guide clicked
+             if(btn_clicked(15,mouse_x,mouse_y))  exit(0); //exit clicked
               }
 
 
       if(changeMade){
-            picLoader(renderer,0,0,page_width,page_height,"background.jpg");
+            picLoader(renderer,0,0,page_width,page_height,"background.png");
             picLoader(renderer, info_x, info_y, info_size+10, info_size, "manual.png");            //guide
             picLoader(renderer, stng_x, stng_y, stng_size, stng_size, "settings (1).png");      //game icon
             picLoader(renderer, stbtn_x, stbtn_y, stbtn_size, stbtn_size, "startbtn.png");      // start button
+            picLoader(renderer, exitbtn_x, exitbtn_y, exitbtn_size+10, exitbtn_size, "exit.png");            //exit
+
 
             SDL_RenderPresent(renderer);
             changeMade=0;
@@ -238,68 +256,11 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
 
 
 void play(SDL_Renderer* renderer){
-bool lc_textureDestroyed = 1,rc_textureDestroyed = 1;
-int rc_goals = 0 ,lc_goals =0;
-cout<<INVISIBLE_BALL;
-//load kardan aks ha
-       m_img = IMG_LoadTexture(renderer,"a.png");
-       img_rect.x = 0;        //pictures coordinates
-       img_rect.y = 0;        //pictures coordinates
-       img_rect.w = 1280;    //pictures size
-       img_rect.h = 800;
-
-       SDL_Rect tir_rect;
-       SDL_Texture* tir = NULL;
-       tir = IMG_LoadTexture(renderer,"tir.png");
-       tir_rect.x = 0;        //pictures coordinates
-       tir_rect.y = 0;        //pictures coordinates
-       tir_rect.w = 1280;    //pictures size
-       tir_rect.h = 800;
-
-       SDL_Rect lc_rect;
-       SDL_Texture* lc_texture = NULL;
-       lc_texture = IMG_LoadTexture(renderer,"1lc.png");
-       SDL_Rect rc_rect;
-       SDL_Texture* rc_texture = NULL;
-       rc_texture = IMG_LoadTexture(renderer,"1rc.png");
-       lc_rect.w = 350 * lc_scale;
-       lc_rect.h = 500 * lc_scale;
-       rc_rect.w = 350 * lc_scale;
-       rc_rect.h = 500 * lc_scale;
-
-       ball_texture = IMG_LoadTexture(renderer,"ball1.png");
-       ball_rect.w = ball_radius * 2;
-       ball_rect.h = ball_radius * 2;
-       SDL_Point ball_point={ball_radius,ball_radius};
-
-       SDL_Rect left_foot_rect;
-       SDL_Texture* left_foot_texture = NULL;
-       left_foot_texture = IMG_LoadTexture(renderer,"1shoe.png");
-       left_foot_rect.h=300*lc_scale;
-       left_foot_rect.w=300*lc_scale;
-//       SDL_Point left_foot_axle={0,30};
-       SDL_Point left_foot_axle={10,20};
-
-       SDL_Rect right_foot_rect;
-       SDL_Texture* right_foot_texture = NULL;
-       right_foot_texture = IMG_LoadTexture(renderer,"1shoel.png");
-       right_foot_rect.h=300*lc_scale;
-       right_foot_rect.w=300*lc_scale;
-       SDL_Point right_foot_axle={350 * rc_scale/2,20};
-
-       punch_img  = IMG_LoadTexture(renderer,"punch.png");
-       rpunch_img = IMG_LoadTexture(renderer,"punch_right.png");
-       qmark_img  = IMG_LoadTexture(renderer,"qmark.png");
-       rtl_fire_img= IMG_LoadTexture(renderer,"rtlFireball.png");
-       ltr_fire_img= IMG_LoadTexture(renderer,"ltrFireball.png");
-
-//load kardan aks ha
-
+loadgame();// loading imagesplay
 
 while(1){
-      //picLoader(renderer,ball_x,ball_y,ball_radius,ball_radius,"ball.png");
-//      cordinatefinder();//comment this line in final version
-      SDL_RenderCopy(renderer, m_img, NULL, &img_rect);
+      cordinatefinder();//comment this line in final version
+      SDL_RenderCopy(renderer, m_img, NULL, &img_rect); //background
       movement(renderer);
       collision(renderer);
       shoot();
@@ -308,11 +269,12 @@ while(1){
       if(lc_freezing_timer > 0) lc_freezing_timer --;
       if(rc_power_timer < power_cooldown) rc_power_timer+=power_cooldown/100;
       if(lc_power_timer < power_cooldown) lc_power_timer+=power_cooldown/100;
-      boxRGBA(renderer,510,0,160 + 350 * (lc_power_timer) / power_cooldown,60,0,0,0,120);
-      boxRGBA(renderer,767,0,1118 - 350 * (rc_power_timer) / power_cooldown,60,0,0,0,80);
-      print_two_digits(605,10,t/fps);
-
-      if(rc_freezing_timer > 0)
+      boxRGBA(renderer,510,0,160 + 350 * (lc_power_timer) / power_cooldown,60,0,0,0,120);//navare ghodrat
+      boxRGBA(renderer,767,0,1118 - 350 * (rc_power_timer) / power_cooldown,60,0,0,0,80);//navare ghodrat
+      print_two_digits(605,10,t/fps);//timer balaye safhe
+      print_one_digit(530,10,lc_goals);
+      print_one_digit(708,10,rc_goals);
+      if(rc_freezing_timer > 0) //right player is freezed
       {
             qmark_rect.x = rc_x + 50 * rc_scale;
             qmark_rect.y = rc_y - 220 * rc_scale;
@@ -321,7 +283,7 @@ while(1){
             SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
       }
 
-       if(lc_freezing_timer > 0)
+       if(lc_freezing_timer > 0) //left player is freezed
       {
             qmark_rect.x = lc_x + 50 * rc_scale;
             qmark_rect.y = lc_y - 220 * rc_scale;
@@ -330,7 +292,7 @@ while(1){
             SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
       }
 
-      if(lc_punching_timer > 0) {
+      if(lc_punching_timer > 0) { //animation mosht zadane chapi
             punch_rect.x=lc_x + 200 * lc_scale;
             punch_rect.y=lc_y + 150 * lc_scale;
             punch_rect.h=300 * lc_scale;
@@ -339,7 +301,7 @@ while(1){
             lc_punching_timer--;
       }
 
-       if(rc_punching_timer > 0) {
+       if(rc_punching_timer > 0) { //animation mosht zadane rasti
             rpunch_rect.x=rc_x -  250 * rc_scale;
             rpunch_rect.y=rc_y + 150 * rc_scale;
             rpunch_rect.h=300 * rc_scale;
@@ -366,7 +328,10 @@ while(1){
                         }
                         break;
                   case KICK_FIRE_BALL:
-                        lc_kick_fire_timer =70;
+                        if ((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
+                        <= 2 * ((shoot_radius + ball_radius) * lc_scale)*((shoot_radius+ball_radius) * lc_scale))
+                        lc_kick_fire_timer =80;
+                        lc_power_timer = 0;
                         break;
             }
       }
@@ -388,7 +353,10 @@ while(1){
                         }
                         break;
                   case KICK_FIRE_BALL:
-                        rc_kick_fire_timer =70;
+                             if ((rc_foot_x(rhead_x,rc_scale) - ball_x)*(rc_foot_x(rhead_x,rc_scale) - ball_x) + (rc_foot_y(rhead_y,rc_scale) - ball_y) * (rc_foot_y(rhead_y,rc_scale) - ball_y)
+                        <= 2 * ((shoot_radius + ball_radius) * rc_scale)*((shoot_radius+ball_radius) * rc_scale))
+                        rc_kick_fire_timer =80;
+                        rc_power_timer = 0;
                         break;
             }
             }
@@ -398,13 +366,11 @@ while(1){
             lc_rect.x = lc_x;        //left player coordinates
             lc_rect.y = lc_y;        //left player coordinates
             SDL_RenderCopy(renderer,lc_texture, NULL, &lc_rect);
-      //left player
 
       //right palyer
             rc_rect.x = rc_x;        //left player coordinates
             rc_rect.y = rc_y;        //left player coordinates
             SDL_RenderCopy(renderer,rc_texture, NULL, &rc_rect);
-      //right player
 
       //shooting
       if(state[SDL_SCANCODE_E] && lc_shoot==-20 && lc_freezing_timer ==0){
@@ -422,17 +388,11 @@ while(1){
       if(rc_shoot>0){
             right_foot_rect.x=rhead_x-220*rc_scale;
             right_foot_rect.y=rhead_y+120*rc_scale;
-      //      ellipse(renderer,right_foot_rect.x,right_foot_rect.y,10,10,100,103,2,1);
             SDL_RenderCopyEx(renderer,right_foot_texture,NULL,&right_foot_rect,50-(rc_shoot)*(rc_shoot)*2,&right_foot_axle,SDL_FLIP_NONE);
 }
 
 
 //shooting
-
-
-
-
-
 
 
 //ball
@@ -445,17 +405,16 @@ while(1){
             ball_rect.y=ball_y - ball_radius;
             SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
       }
-//ball
 
 
-SDL_RenderCopy(renderer, tir, NULL, &tir_rect);
+SDL_RenderCopy(renderer, tir, NULL, &tir_rect);//aks tirak ha rooye akse asli
 
-SDL_RenderPresent(renderer);
+SDL_RenderPresent(renderer);//presente nahayi
 
-      if(state[SDL_SCANCODE_ESCAPE])
+      if(state[SDL_SCANCODE_ESCAPE]) //pause kardan
       switch(PauseMenu(renderer,m_img,1280,800,100)){
             case 0:
-                  break;
+                  break;//resume kardan
             case 1:
                   resetvalues(0);
                   SDL_DestroyTexture(lc_texture);
@@ -480,9 +439,6 @@ SDL_RenderPresent(renderer);
 t++;
 SDL_Delay(delay);
 }
-
-SDL_DestroyTexture(m_img);
-SDL_DestroyTexture(tir);
 
 }
 
@@ -679,7 +635,6 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
     SDL_Event* e = new SDL_Event();
     bool ump_nbp = true; // avoid unnecessary rendering
     bool hover=false; //mouse is hovering over button
-
     // start which run once
     // first button
         btn_array[0][0] = ump_w + W / 2 + 10 - (640 * ump_w) / H;
@@ -791,6 +746,8 @@ int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, in
         }
 
     }
+
+
 }
 
 void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address){
@@ -821,6 +778,9 @@ void collision(SDL_Renderer* renderer){
       if((ball_y<390 && ball_y>360) && (ball_x<120 || ball_x>1110)) {ball_y-=ball_dy;ball_dy*=-1;}//tir ofoghi
 //toop va divar ha
 
+if(ball_x > 1200 && ball_y > 400) goal(1);
+if(ball_x < 80  && ball_y > 400) goal(0);
+
 //kale va toop
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
          (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
@@ -833,18 +793,17 @@ void collision(SDL_Renderer* renderer){
       if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
    (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
    && ball_dx != -15){
-        //toop khord be kale chapi
+        //toop khord be kale rasti
       ball_dx *=-0.8;
       ball_dy *=-0.8;
       }
-//kale va toop
 
 //badan va toop
 
 if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y + 250*rc_scale){
 //chape badane rasti
       if(ball_dx != -15)
-            ball_dx =  -(6/(0.2+(0.2 * (rhead_x - ball_x))));
+            ball_dx =  -(6/(0.2+(0.2 * sqrt(rhead_x - ball_x))));
 }
                         //if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
                         ////raste badane rasti
@@ -866,11 +825,11 @@ if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 50
 }
 
 void movement(SDL_Renderer* renderer){
-//      if(sqrt(ball_dy)<0.01 && ball_y>590-ball_radius) {ball_ddy=0;ball_dy=0;ball_y=590-ball_radius;}
 
 if(lc_kick_fire_timer > 0) {
 if(ball_x < 1200)ball_x +=10;
-if(rc_x < ball_x  && ball_x - rhead_x < 100) rc_x = ball_x;
+if(rc_x < ball_x  && ball_x - rhead_x < 100 && ball_y > rhead_y-100 * rc_scale)
+      rc_x = ball_x;
 ltr_fire_rect.x = ball_x - ball_radius -100;
 ltr_fire_rect.y = ball_y - ball_radius -25;
 ltr_fire_rect.w = ball_rect.w + 100;
@@ -880,7 +839,8 @@ SDL_RenderCopy(renderer,ltr_fire_img,NULL,&ltr_fire_rect);
 }
 else if(rc_kick_fire_timer >0){
 if(ball_x >80)ball_x -=10;
-if(lc_x + 350*lc_scale > ball_x  && lhead_x - ball_x < 100) lc_x = ball_x;
+if(lc_x + 350*lc_scale > ball_x  && lhead_x - ball_x < 100 && ball_y > lhead_y-100 * lc_scale)
+      lc_x = ball_x - 350 * lc_scale;
 rtl_fire_rect.x = ball_x - ball_radius ;
 rtl_fire_rect.y = ball_y - ball_radius-25;
 rtl_fire_rect.w = ball_rect.w + 100;
@@ -998,11 +958,7 @@ void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[])
     }
 }
 
-void resetvalues(bool fullrestart){
-t=0;
-ball_x=200,ball_y=40,ball_radius=30,ball_dx=2,ball_ddx=0,ball_dy=50,ball_ddy=0.5, //toop
-lc_dy=0,lc_ddy=0.5,lc_scale=0.3,lc_x=100,lc_y=zamin_y-500*lc_scale,lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;
-}
+
 
 void shoot(){
 
@@ -1061,11 +1017,9 @@ if(rc_shoot>-20) {
 }
 
 short checkshoot(float tangent){
-
 if(tangent<0.15 && tangent>0) return DEGREE15;
 if(tangent>0.15 ) return DEGREE45;
 if(tangent<0 && tangent>-60) return DEGREENEGATIVE15;
-
 }
 void testellipse(int x,int y,int radius){
 ellipse(renderer,x,y,radius,radius,120,123,123,1);
@@ -1136,27 +1090,117 @@ print_one_digit(x+30, y , r%10);
 print_one_digit(x , y , (r/10) % 10);
 }
 
-void special_powers(bool leftCharacter){
-            SDL_RenderCopy(renderer,punch_img,NULL,&punch_rect);
+void loadgame(){
+//load kardan aks ha
+       m_img = IMG_LoadTexture(renderer,fields[field_index]);  // aks field
+       img_rect.x = 0;        //pictures coordinates
+       img_rect.y = 0;        //pictures coordinates
+       img_rect.w = 1280;    //pictures size
+       img_rect.h = 800;
 
-if(leftCharacter && lc_power_timer == 350){
-switch(lc_power_index){
-      case PUNCH:
-            SDL_RenderCopy(renderer,punch_img,NULL,&punch_rect);
+
+       tir = IMG_LoadTexture(renderer,"tir.png"); //akse tirak ha
+       tir_rect.x = 0;        //pictures coordinates
+       tir_rect.y = 0;        //pictures coordinates
+       tir_rect.w = 1280;    //pictures size
+       tir_rect.h = 800;
 
 
+       lc_texture = IMG_LoadTexture(renderer,players_lc[lc_index]); //akse character chapi
+       lc_rect.w = 350 * lc_scale;
+       lc_rect.h = 500 * lc_scale;
 
+       rc_texture = IMG_LoadTexture(renderer,players_rc[rc_index]); //akse character rasti
+       rc_rect.w = 350 * lc_scale;
+       rc_rect.h = 500 * lc_scale;
+
+       ball_texture = IMG_LoadTexture(renderer,balls[ball_index]);//akse toop
+       ball_rect.w = ball_radius * 2;
+       ball_rect.h = ball_radius * 2;
+
+
+       left_foot_texture = IMG_LoadTexture(renderer,shoes_rc[lc_index]);//akse paye chapi(baraye animation shoot)
+       left_foot_rect.h=300*lc_scale;
+       left_foot_rect.w=300*lc_scale;
+
+       right_foot_texture = IMG_LoadTexture(renderer,shoes_lc[rc_index]);//akse paye rasti(baraye animation shoot)
+       right_foot_rect.h=300*lc_scale;
+       right_foot_rect.w=300*lc_scale;
+
+       punch_img  = IMG_LoadTexture(renderer,"punch.png");               //akse mosht
+       rpunch_img = IMG_LoadTexture(renderer,"punch_right.png");//akse mosht
+       qmark_img  = IMG_LoadTexture(renderer,"qmark.png");              //akse alamat saol
+       rtl_fire_img= IMG_LoadTexture(renderer,"rtlFireball.png");       //akse toop atishi
+       ltr_fire_img= IMG_LoadTexture(renderer,"ltrFireball.png");       //akse toop atishi
+
+//load kardan aks ha
 }
 
-//else{
-//
-//
-//
-//
-//}
-
-
+void resetvalues(bool fullrestart){
+if(fullrestart) {
+      rc_goals = 0 ;
+      lc_goals =0  ;
+      t=0;
 }
+rc_shoot=-20;
+lc_shoot=-20;
+lc_power_timer = 0;
+rc_power_timer = 0 ;
+lc_punching_timer = 0;
+rc_punching_timer = 0 ;
+lc_freezing_timer = 0 ;
+rc_freezing_timer = 0;
+invisible_ball_timer = 0 ;
+lc_kick_fire_timer = 0;
+rc_kick_fire_timer = 0;
+ball_x=640,ball_y=40;
+ball_radius=30;
+ball_dx=3;
+ball_ddx=0;
+ball_dy=2;
+ball_ddy=0.5;
+lc_dy=0;
+lc_ddy=1.6;
+lc_scale=0.3;
+lc_x=165;
+lc_y=zamin_y-500*lc_scale;
+lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y;
+rc_dy=0;
+rc_ddy=1.6;
+rc_scale=0.3;
+rc_x=1000;
+rc_y=zamin_y-500*rc_scale;
+rhead_x=210*rc_scale+rc_x;
+rhead_y=165*rc_scale+rc_y;
+}
+
+void goal(bool left){
+if(left)    lc_goals++;
+if(right) rc_goals++;
+SDL_Rect  goal_rect;
+goal_rect.x  = 450;
+goal_rect.y  = 200;
+goal_rect.h  = 300;
+goal_rect.w =  400;
+resetvalues(0);
+SDL_Texture* goal_img = NULL;
+goal_img = IMG_LoadTexture(renderer,"goal.png");
+SDL_Point  goal_point={200,150};
+float angle = 0;
+int i = 0;
+while(i < 90){
+if(i <= 30 ) angle = 900 - square(i);
+else angle =0;
+SDL_RenderCopy(renderer, m_img, NULL, &img_rect); //background
+SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
+SDL_RenderCopy(renderer, tir, NULL, &tir_rect);//aks tirak ha rooye akse asli
+
+SDL_RenderCopyEx(renderer, goal_img , NULL , &goal_rect , angle , &goal_point,SDL_FLIP_NONE);//akse goal
+SDL_RenderPresent(renderer);
+      i++;
+      SDL_Delay(40);
 }
 
 
+SDL_DestroyTexture(goal_img);
+}
