@@ -15,10 +15,11 @@
 #define DEGREE15 1
 #define DEGREE45 2
 #define DEGREENEGATIVE15 3
-#define power_cooldown 100
+#define power_cooldown 50
 #define square(x) x*x
 #define numberOfPowers 4
 #define fps 50
+#define gametime 120
 
 enum powers{
 PUNCH,
@@ -46,7 +47,6 @@ void shoot(); // this function is called when shoot button is pressed
 short checkshoot(float tangent);// checks angle of shooting
 void print_one_digit(int X,int Y,int R);
 void print_two_digits(int x,int y,int r);
-void special_powers(bool leftCharacter);
 void loadgame();
 void goal(bool left); // if left = 1 means that left player scored a goal and if 0 right player...
 
@@ -56,7 +56,7 @@ void play(SDL_Renderer* renderer);
 void tutorial(SDL_Renderer* renderer);
 void setting(SDL_Renderer* renderer);
 int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, int ump_w);
-
+bool endmenu();
 
 //global variables
 const int nbtn = 50,zamin_y=590;
@@ -84,7 +84,7 @@ SDL_Renderer* renderer;
 const Uint8 *state = SDL_GetKeyboardState(NULL);
 
 
-float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_ddy=0.5, //toop
+float ball_x=640,ball_y=120,ball_radius=30,ball_dx=0,ball_ddx=0,ball_dy=-8,ball_ddy=0.5, //toop
       lc_dy=0,lc_ddy=1.6,lc_scale=0.3,lc_x=165,lc_y=zamin_y-500*lc_scale,         //character chap
       lhead_x=185*lc_scale+lc_x,lhead_y=165*lc_scale+lc_y                                             //character chap
       ,rc_dy=0,rc_ddy=1.6,rc_scale=0.3,rc_x=1000,rc_y=zamin_y-500*rc_scale,//character rast
@@ -92,8 +92,10 @@ float ball_x=640,ball_y=40,ball_radius=30,ball_dx=3,ball_ddx=0,ball_dy=2,ball_dd
 
 float lc_power_timer = 0,rc_power_timer = 0 , lc_punching_timer = 0     //timers
 ,rc_punching_timer = 0 , lc_freezing_timer = 0 , rc_freezing_timer = 0     //timers
-,invisible_ball_timer = 0 ,lc_kick_fire_timer = 0 , rc_kick_fire_timer = 0; // timers
-int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0 , lc_power_index = 2 ,rc_power_index=2;//power ha
+,invisible_ball_timer = 0 ,lc_kick_fire_timer = 0 , rc_kick_fire_timer = 0
+,lhead_timer=0,rhead_timer=0,lbody_timer = 0,rbody_timer=0;
+; // timers
+int rc_index=0 , lc_index=0 , field_index=0 , ball_index=0 , lc_power_index = KICK_FIRE_BALL ,rc_power_index=PUNCH;//power ha
 int rc_goals = 0 ,lc_goals =0;
 
 SDL_Rect punch_rect;
@@ -124,7 +126,6 @@ SDL_Point left_foot_axle={10,20};
 SDL_Point right_foot_axle={350 * rc_scale/2,20};
 SDL_Point ball_point={ball_radius,ball_radius};
 
-
 int main( int argc, char * argv[] )
 {
 
@@ -146,22 +147,20 @@ int main( int argc, char * argv[] )
 bool exit=0;
 while(!exit){
 
-switch(startMenu(renderer,L,W)){
-case 0://play button pressed
-      play(renderer);
-      break;
-case 1://info button pressed
-      tutorial(renderer);
-      break;
-case 2://setting button pressed
-      setting(renderer);
-      break;
-case 3:
-      exit=1;
-      break;
-
+      switch(startMenu(renderer,L,W)){
+      case 0://play button pressed
+            play(renderer);
+            break;
+      case 1://info button pressed
+            tutorial(renderer);
+            break;
+      case 2://setting button pressed
+            setting(renderer);
+            break;
+      case 3:
+            exit=1;
+            break;
 }
-
 }
 
 
@@ -171,51 +170,15 @@ case 3:
                         return 0;
 }
 
-
-
-
-
-
-
-
-
-
-void my_line(SDL_Renderer *Renderer, int x_1, int y_1, int L, double theta,int widht, int R, int G, int B )
-
-{
-    int x_2 = x_1 + L*cos(theta);
-    int y_2 = y_1 - L*sin(theta);
-    thickLineRGBA(Renderer,x_1,y_1,x_2,y_2,widht,R,G,B,255);
-  //  SDL_RenderPresent(Renderer);
-}
-
-
-
-void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, int fill_boolian )
-{
-    SDL_Rect rectangle ;
-    rectangle.x = x;
-    rectangle.y = y;
-    rectangle.w = w;
-    rectangle.h = h;
-    SDL_SetRenderDrawColor(Renderer, R, G, B, 255);
-    if (fill_boolian==1)
-    SDL_RenderFillRect(Renderer, &rectangle);
-    SDL_RenderDrawRect(Renderer, &rectangle);
-}
-
-
-
-
-
-
 short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
-      int stng_x=880,stng_y=280,stng_size=150,
-      stbtn_x=870,stbtn_y=70,stbtn_size=170,
-      info_x=876,info_y=470,info_size=150,
-      exitbtn_x=1180,exitbtn_y=0,exitbtn_size=90,
+      int stng_x=880,stng_y=280,stng_size=150, //setting btn
+      stbtn_x=870,stbtn_y=70,stbtn_size=170, //start btn
+      info_x=876,info_y=470,info_size=150,       //tutorial btn
+      exitbtn_x=1180,exitbtn_y=0,exitbtn_size=90, //exit btn
       mouse_x,mouse_y;
+
       bool changeMade=1;
+
       btn_array[10][0]=stbtn_x;btn_array[10][1]=stbtn_y;   //start button
       btn_array[10][2]=stbtn_x+stbtn_size;btn_array[10][3]=stbtn_y+stbtn_size;
       btn_array[11][0]=stng_x,btn_array[11][1]=stng_y;         //setting button
@@ -224,17 +187,14 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
       btn_array[14][2]=info_x+info_size;btn_array[14][3]=info_y+info_size;
       btn_array[15][0]=exitbtn_x;btn_array[15][1]=exitbtn_y; //exit button
       btn_array[15][2]=exitbtn_x+exitbtn_size;btn_array[15][3]=exitbtn_y+exitbtn_size;
-      //note that btn_array  [15] is reserved for start menu for adding more buttons
-      SDL_Delay(100);
       while(1){
            SDL_PollEvent(event);
-           if(SDL_GetMouseState(&mouse_x,&mouse_y)&SDL_BUTTON(SDL_BUTTON_LEFT)){
+           if(SDL_GetMouseState(&mouse_x,&mouse_y) & SDL_BUTTON(SDL_BUTTON_LEFT)){ // left click
             if(btn_clicked(10,mouse_x,mouse_y)) return 0; //start got clicked
             if(btn_clicked(11,mouse_x,mouse_y)) return 2; //setting got clicked
             if(btn_clicked(14,mouse_x,mouse_y)) return 1; //guide clicked
-             if(btn_clicked(15,mouse_x,mouse_y))  exit(0); //exit clicked
+             if(btn_clicked(15,mouse_x,mouse_y))  exit(0);   //exit clicked
               }
-
 
       if(changeMade){
             picLoader(renderer,0,0,page_width,page_height,"background.png");
@@ -242,7 +202,6 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
             picLoader(renderer, stng_x, stng_y, stng_size, stng_size, "settings (1).png");      //game icon
             picLoader(renderer, stbtn_x, stbtn_y, stbtn_size, stbtn_size, "startbtn.png");      // start button
             picLoader(renderer, exitbtn_x, exitbtn_y, exitbtn_size+10, exitbtn_size, "exit.png");            //exit
-
 
             SDL_RenderPresent(renderer);
             changeMade=0;
@@ -252,28 +211,25 @@ short startMenu(SDL_Renderer* renderer,int page_width,int page_height){
 
 }
 
-
-
-
 void play(SDL_Renderer* renderer){
-loadgame();// loading imagesplay
+loadgame();// loading images
 
-while(1){
-      cordinatefinder();//comment this line in final version
+while(lc_goals < 5  && rc_goals <5  && t/fps < gametime){
+//      cordinatefinder();//comment this line in final version
       SDL_RenderCopy(renderer, m_img, NULL, &img_rect); //background
       movement(renderer);
-      collision(renderer);
       shoot();
+      collision(renderer);
 
-      if(rc_freezing_timer > 0) rc_freezing_timer --;
-      if(lc_freezing_timer > 0) lc_freezing_timer --;
-      if(rc_power_timer < power_cooldown) rc_power_timer+=power_cooldown/100;
-      if(lc_power_timer < power_cooldown) lc_power_timer+=power_cooldown/100;
+
+      if(rc_power_timer < power_cooldown) rc_power_timer+=1;
+      if(lc_power_timer < power_cooldown) lc_power_timer+=1;
       boxRGBA(renderer,510,0,160 + 350 * (lc_power_timer) / power_cooldown,60,0,0,0,120);//navare ghodrat
-      boxRGBA(renderer,767,0,1118 - 350 * (rc_power_timer) / power_cooldown,60,0,0,0,80);//navare ghodrat
+      boxRGBA(renderer,767,0,1118 - 350 * (rc_power_timer) / power_cooldown,60,0,0,0,120);//navare ghodrat
       print_two_digits(605,10,t/fps);//timer balaye safhe
-      print_one_digit(530,10,lc_goals);
-      print_one_digit(708,10,rc_goals);
+      print_one_digit(530,10,lc_goals);//tedad goal chapi
+      print_one_digit(708,10,rc_goals);//tedad goal rasti
+
       if(rc_freezing_timer > 0) //right player is freezed
       {
             qmark_rect.x = rc_x + 50 * rc_scale;
@@ -281,6 +237,7 @@ while(1){
             qmark_rect.w = 300 * (rc_scale );
             qmark_rect.h = 300 * (rc_scale );
             SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
+            rc_freezing_timer --;
       }
 
        if(lc_freezing_timer > 0) //left player is freezed
@@ -290,6 +247,7 @@ while(1){
             qmark_rect.w = 300 * (lc_scale );
             qmark_rect.h = 300 * (lc_scale );
             SDL_RenderCopy(renderer,qmark_img,NULL,&qmark_rect);
+            lc_freezing_timer --;
       }
 
       if(lc_punching_timer > 0) { //animation mosht zadane chapi
@@ -319,6 +277,7 @@ while(1){
                         if(rc_x - lc_x < 350 * lc_scale + 480 * square(lc_scale))
                               rc_freezing_timer = 150; // rasti mosht khord
                         break;
+
                   case INVISIBLE_BALL:
                         lc_power_timer = 0;
                         if ((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
@@ -330,7 +289,7 @@ while(1){
                   case KICK_FIRE_BALL:
                         if ((lc_foot_x(lhead_x,lc_scale) - ball_x)*(lc_foot_x(lhead_x,lc_scale) - ball_x) + (lc_foot_y(lhead_y,lc_scale) - ball_y) * (lc_foot_y(lhead_y,lc_scale) - ball_y)
                         <= 2 * ((shoot_radius + ball_radius) * lc_scale)*((shoot_radius+ball_radius) * lc_scale))
-                        lc_kick_fire_timer =80;
+                        lc_kick_fire_timer =50;
                         lc_power_timer = 0;
                         break;
             }
@@ -355,7 +314,7 @@ while(1){
                   case KICK_FIRE_BALL:
                              if ((rc_foot_x(rhead_x,rc_scale) - ball_x)*(rc_foot_x(rhead_x,rc_scale) - ball_x) + (rc_foot_y(rhead_y,rc_scale) - ball_y) * (rc_foot_y(rhead_y,rc_scale) - ball_y)
                         <= 2 * ((shoot_radius + ball_radius) * rc_scale)*((shoot_radius+ball_radius) * rc_scale))
-                        rc_kick_fire_timer =80;
+                        rc_kick_fire_timer =50;
                         rc_power_timer = 0;
                         break;
             }
@@ -376,6 +335,7 @@ while(1){
       if(state[SDL_SCANCODE_E] && lc_shoot==-20 && lc_freezing_timer ==0){
            lc_shoot=8;
            }
+
       if(lc_shoot>0){
             left_foot_rect.x=lhead_x-15;
             left_foot_rect.y=lhead_y+40;
@@ -396,14 +356,14 @@ while(1){
 
 
 //ball
+
       if(invisible_ball_timer > 0){
          invisible_ball_timer--;
       }
-
       else if(lc_kick_fire_timer == 0 && rc_kick_fire_timer == 0){
             ball_rect.x=ball_x - ball_radius;
             ball_rect.y=ball_y - ball_radius;
-            SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
+            SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect, t%20 * ball_dx , &ball_point ,SDL_FLIP_NONE);
       }
 
 
@@ -416,38 +376,68 @@ SDL_RenderPresent(renderer);//presente nahayi
             case 0:
                   break;//resume kardan
             case 1:
-                  resetvalues(0);
-                  SDL_DestroyTexture(lc_texture);
-                  SDL_DestroyTexture(rc_texture);
-                  SDL_DestroyTexture(ball_texture);
-                  SDL_DestroyTexture(right_foot_texture);
-                  SDL_DestroyTexture(left_foot_texture);
-                  SDL_DestroyTexture(tir);
+                  resetvalues(1);
                   return play(renderer);//restart
             case 2:
-                  resetvalues(0);
-                  SDL_DestroyTexture(lc_texture);
-                  SDL_DestroyTexture(rc_texture);
-                  SDL_DestroyTexture(ball_texture);
-                  SDL_DestroyTexture(right_foot_texture);
-                  SDL_DestroyTexture(left_foot_texture);
-                  SDL_DestroyTexture(tir);
+                  resetvalues(1);
                   return ;//quit
              }
-             testellipse(ball_x,ball_y,15);
-
 t++;
 SDL_Delay(delay);
 }
+if (endmenu() == 0)  {
+            resetvalues(1);
+            return play(renderer);//restart
+}
+else {
+            resetvalues(1);
+            return;
+}
+
+}
+
+
+bool endmenu(){
+      int restartbtn_x = 700,restartbtn_y=400,restartbtn_size=100,
+      exitbtn_x = 550,exitbtn_y=400,exitbtn_size=100,
+      mouse_x,mouse_y;
+      btn_array[16][0] = restartbtn_x;
+      btn_array[16][1] = restartbtn_y;
+      btn_array[16][2] = restartbtn_x + restartbtn_size;
+      btn_array[16][3] = restartbtn_y + restartbtn_size;
+      btn_array[17][0] = exitbtn_x;
+      btn_array[17][1] = exitbtn_y;
+      btn_array[17][2] = exitbtn_x + exitbtn_size;
+      btn_array[17][3] = exitbtn_y +exitbtn_size;
+      bool changemade = 1;
+      picLoader(renderer,0,0,1280,800,"end.png");
+      picLoader(renderer,exitbtn_x,exitbtn_y,exitbtn_size,exitbtn_size,"quit.png");
+      picLoader(renderer,restartbtn_x,restartbtn_y,restartbtn_size,restartbtn_size,"undo.png");
+      if(lc_goals > rc_goals) textRGBA(renderer,455,150,"LEFT PLAYER WON",2,50,0,0,0,255);
+      else if(rc_goals > lc_goals) textRGBA(renderer,455,150,"RIGHT PLAYER WON",2,50,0,0,0,255);
+      else textRGBA(renderer,530,150,"DRAW",2,100,0,0,0,255);
+      SDL_RenderPresent(renderer);
+
+      while (1){
+            SDL_PollEvent(event) ;
+           if(SDL_GetMouseState(&mouse_x,&mouse_y)&SDL_BUTTON(SDL_BUTTON_LEFT)){
+           if(btn_clicked(16,mouse_x,mouse_y) )
+                return 0;
+           if(btn_clicked(17,mouse_x,mouse_y) )
+                return 1;
+                  }
+      }
 
 }
 
 
 void tutorial(SDL_Renderer* renderer){
       short numberOfPics = sizeof(ume_picAddress)/sizeof(ume_picAddress[0]);// gereftan tedad aks haye safhe aval
-      int rarrow_x=900,rarrow_y=530,rarrow_size=250,
+      int rarrow_x=900,rarrow_y=530,rarrow_size=250, //right arrow
       lerrow_x=100,lerrow_y=530,lerrow_size=250,
-      home_x=560,home_y=560,home_size=140,mouse_x,mouse_y;
+      home_x=560,home_y=560,home_size=140,
+      mouse_x,mouse_y;
+
       short index=0;
       bool changeMade=1,click=0;
 
@@ -455,7 +445,7 @@ void tutorial(SDL_Renderer* renderer){
       btn_array[12][2]=lerrow_x+lerrow_size;btn_array[12][3]=lerrow_y+lerrow_size;
       btn_array[13][0]=rarrow_x;btn_array[13][1]=rarrow_y; //right arrow
       btn_array[13][2]=rarrow_x+rarrow_size;btn_array[13][3]=rarrow_y+rarrow_size;
-      btn_array[15][0]=home_x;btn_array[15][1]=home_y; //right arrow
+      btn_array[15][0]=home_x;btn_array[15][1]=home_y; //home
       btn_array[15][2]=home_x+home_size;btn_array[15][3]=home_y+home_size;
 
       while(1){
@@ -617,138 +607,7 @@ SDL_RenderPresent(renderer);
 
 }
 
-int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, int ump_w)
-{
-    SDL_Texture* ump_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, W, H);
-    SDL_SetRenderTarget(m_renderer, ump_texture);
-    SDL_RenderCopy(m_renderer, m_texture, NULL, NULL);
-    //0 for resume, 1 for restart, 2 for quit
-    int i = 0;
-    //menu background
-    short int vx[4] = { W / 2 + ump_w,W,W,W / 2 - ump_w }, vy[4] = { 0,0,H,H };
-    filledPolygonColor(m_renderer, vx, vy, 4, 0xff330000);
-    //score
-    const char* ump_time = intToString(t/fps).c_str();
-    textRGBA(m_renderer, W / 2 + ump_w + W / 10, 100, "Time:", 2, 40, 255, 255, 255, 255);
-    textRGBA(m_renderer, W / 2 + ump_w + W / 6 + 80, 150, ump_time, 2, 40, 255, 255, 255, 255);
-    SDL_SetRenderTarget(m_renderer, NULL);
-    SDL_Event* e = new SDL_Event();
-    bool ump_nbp = true; // avoid unnecessary rendering
-    bool hover=false; //mouse is hovering over button
-    // start which run once
-    // first button
-        btn_array[0][0] = ump_w + W / 2 + 10 - (640 * ump_w) / H;
-        btn_array[0][1] = 320;
-        btn_array[0][2] = W;
-        btn_array[0][3] = 420;
-    // second button
-        btn_array[1][0] = ump_w + W / 2 + 10 - (840 * ump_w) / H;
-        btn_array[1][1] = 420;
-        btn_array[1][2] = W;
-        btn_array[1][3] = 520;
-    // third button
-        btn_array[2][0] = ump_w + W / 2 + 10 - (1040 * ump_w) / H;
-        btn_array[2][1] = 520;
-        btn_array[2][2] = W;
-        btn_array[2][3] = 620;
-    int mx=0, my=0;
-    while (1)
-    {
-        e->type = NULL;
-        SDL_PollEvent(e);
-        if (e->type==SDL_MOUSEMOTION)
-        {
-            mx = e-> motion.x;
-            my = e-> motion.y;
-        }
-        else
-        {
-            mx=0;
-            my=0;
-        }
 
-
-        //hover effect
-        for (int j=0;j<3;j++)
-        {
-            if (btn_clicked(j,mx,my) && i!=j)
-            {
-                hover=true;
-                i=j;
-                ump_nbp=true;
-                break;
-            }
-        }
-
-        if (e->type==SDL_MOUSEBUTTONDOWN && hover)
-        {
-            SDL_DestroyTexture(ump_texture);
-            return i;
-        }
-
-        else if (e->type == SDL_KEYDOWN )
-        {
-            if (e->key.keysym.sym == SDLK_RETURN)
-            {
-                SDL_DestroyTexture(ump_texture);
-                return i;
-            }
-            else if (e->key.keysym.sym == SDLK_DOWN)
-            {
-                ump_nbp = true;
-                i++;
-                i %= 3;
-            }
-            else if (e->key.keysym.sym == SDLK_UP)
-            {
-                ump_nbp = true;
-                i--;
-                i = (3 + i) % 3;
-            }
-        }
-        if (ump_nbp)
-        {
-            ump_nbp = false;
-            SDL_RenderCopy(m_renderer, ump_texture, NULL, NULL);
-            //buttons
-            if (i == 0)
-            {
-                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 320 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 420 * ump_w / H };
-                short int ump_vy[4] = { 320,320,420,420 };
-                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
-                gradient(m_renderer, ump_vx, ump_vy);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 0, 0, 0, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
-            }
-            else if (i == 1)
-            {
-                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 420 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 520 * ump_w / H };
-                short int ump_vy[4] = { 420,420,520,520 };
-                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
-                gradient(m_renderer, ump_vx, ump_vy);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 0, 0, 0, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
-            }
-            else
-            {
-                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 520 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 620 * ump_w / H };
-                short int ump_vy[4] = { 520,520,620,620 };
-                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
-                gradient(m_renderer, ump_vx, ump_vy);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 0, 0, 0, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
-                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
-            }
-            SDL_RenderPresent(m_renderer);
-
-        }
-
-    }
-
-
-}
 
 void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const char* address){
 
@@ -772,52 +631,108 @@ void picLoader (SDL_Renderer* renderer,int x,int y,int width,int height,const ch
 void collision(SDL_Renderer* renderer){
 //toop va divar ha
       if(ball_x>1280-ball_radius&&ball_dx>0) ball_dx*=-0.9;   //raste safhe
-      if((ball_y>590-ball_radius)&&ball_dy>0) ball_dy*=-0.7;  //kafe zamin
+      if((ball_y>590-ball_radius)&&ball_dy>0) ball_dy*=-0.7;   //kafe zamin
       if(ball_y<0+ball_radius&&ball_dy<0) ball_dy*=-1;      //khorde be saghf
       if(ball_x<0+ball_radius&&ball_dx<0) ball_dx*=-0.9;      //chape safhe
-      if((ball_y<390 && ball_y>360) && (ball_x<120 || ball_x>1110)) {ball_y-=ball_dy;ball_dy*=-1;}//tir ofoghi
-//toop va divar ha
+      if((ball_y<390 && ball_y>360) && (ball_x<120 || ball_x>1110)){ball_y-=ball_dy;ball_dy*=-1;}//tir ofoghi
 
+//goal shodan
 if(ball_x > 1200 && ball_y > 400) goal(1);
-if(ball_x < 80  && ball_y > 400) goal(0);
+if(ball_x < 80  && ball_y > 400)      goal(0);
+
+if(lhead_timer > 0) lhead_timer--;
+if(rhead_timer > 0) rhead_timer--;
 
 //kale va toop
       if((ball_x - lhead_x)*(ball_x - lhead_x) + (ball_y - lhead_y)*(ball_y - lhead_y) <=
          (ball_radius + 100*lc_scale) * (ball_radius + 100*lc_scale)
-         && ball_dx!=15){
+         && ball_dx!=15 && lhead_timer == 0)
+         {
                //toop khord be kale chapi
-            ball_dx *=-0.8;
-            ball_dy *=-0.8;
-      }
+                     if(ball_x > lhead_x && ball_dx > 0){ //raste kale chapi va harekat toop be rast
+                              ball_dx *= 1;
+                              ball_dy *= -1;
+                     }
+                     else if(ball_x > lhead_x && ball_dx < 0){//raste kale chapi va harekat toop be chap
+                               ball_dx *= -0.8;
+                               ball_dy *= -0.8;
+                     }
+                     else if (ball_x > lhead_x && ball_dx < 0){//raste kale chapi va harekat toop be chap
+                               ball_dx *=-0.8;
+                               ball_dy *=-0.8;
+                        }
+                     else{ //chape kale chapi va harekat toop be chap
+                                ball_dx *=0.8;
+                               ball_dy *=-0.8;
+                     }
+            lhead_timer =15;
+        }
 
       if((ball_x - rhead_x)*(ball_x - rhead_x) + (ball_y - rhead_y)*(ball_y - rhead_y) <=
    (ball_radius + 100*rc_scale) * (ball_radius + 100*rc_scale)
-   && ball_dx != -15){
+   && ball_dx != -15 && rhead_timer == 0){
         //toop khord be kale rasti
-      ball_dx *=-0.8;
-      ball_dy *=-0.8;
+                      if(ball_x > rhead_x && ball_dx > 0){ //raste kale rasti va harekat toop be rast
+                               ball_dx *=0.8;
+                               ball_dy *=-0.8;
+                     }
+                     else if(ball_x > rhead_x && ball_dx < 0){//raste kale rasti  va harekat toop be chap
+                               ball_dx *= 0.8;
+                               ball_dy *=-0.8;
+                     }
+                     else if (ball_x < rhead_x && ball_dx < 0){//chape kale rasti  va harekat toop be chap
+                               ball_dx *= 1;
+                               ball_dy *= -1;
+                     }
+                     else{ //chape kale rasti  va harekat toop be rast
+                              ball_dx *= -0.8;
+                              ball_dy *= -0.8;
+                     }
+      rhead_timer = 15;
       }
 
 //badan va toop
 
+if(lbody_timer > 0) lbody_timer--;
+if(rbody_timer > 0) rbody_timer--;
+
 if(ball_x < rhead_x && ball_x > rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y + 250*rc_scale){
 //chape badane rasti
-      if(ball_dx != -15)
-            ball_dx =  -(6/(0.2+(0.2 * sqrt(rhead_x - ball_x))));
+            if(ball_dx > 0)
+                  ball_dx *= -0.3;
+            if(abs(ball_dx <0.2))
+                        ball_dx = -6;
+
+                  rbody_timer=15;
 }
-                        //if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
-                        ////raste badane rasti
-                        //            ball_dx = (6/(0.2+(0.2 * (rhead_x - ball_x))));
-                        //}
-                        //if(ball_x < lhead_x && ball_x > lhead_x - 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y){
-                        ////chape badane chapi
-                        //            ball_dx =  -(6/(0.2+(0.2 * (lhead_x - ball_x))));
-                        //
-                        //}
+if(ball_x > rhead_x && ball_x < rhead_x - 350/2 * rc_scale && ball_y < rc_y + 500*rc_scale && ball_y>rc_y){
+//raste badane rasti
+if(ball_dx > 0){
+          ball_dx *= -0.3;
+      rbody_timer=15;
+
+}
+
+}
+
+
+if(ball_x < lhead_x && ball_x > lhead_x - 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y){
+//chape badane chapi
+      if(ball_dx > 0)
+            ball_dx *= -0.3;
+
+            lbody_timer = 15;
+}
 if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 500*lc_scale && ball_y>lc_y + 250*lc_scale){
 //raste badane chapi
-      if(ball_dx != 15)
-                  ball_dx = (6/(0.2+sqrt(0.2 * (ball_x - lhead_x))));
+      if(ball_dx < 0)
+            ball_dx *=-0.3;
+
+      if(abs(ball_dx <0.2))
+            ball_dx = 6;
+
+      lbody_timer = 15;
+
 }
 
 //badan va toop
@@ -827,9 +742,11 @@ if(ball_x > lhead_x && ball_x < lhead_x + 350/2 * lc_scale && ball_y < lc_y + 50
 void movement(SDL_Renderer* renderer){
 
 if(lc_kick_fire_timer > 0) {
-if(ball_x < 1200)ball_x +=10;
-if(rc_x < ball_x  && ball_x - rhead_x < 100 && ball_y > rhead_y-100 * rc_scale)
+if(ball_x < 1200) ball_x +=10;
+if(rc_x < ball_x  && ball_x - rhead_x < 100 && ball_y > rhead_y-100 * rc_scale){
       rc_x = ball_x;
+      rc_freezing_timer=fps*2;
+}
 ltr_fire_rect.x = ball_x - ball_radius -100;
 ltr_fire_rect.y = ball_y - ball_radius -25;
 ltr_fire_rect.w = ball_rect.w + 100;
@@ -837,10 +754,13 @@ ltr_fire_rect.h = ball_rect.h +60;
 lc_kick_fire_timer--;
 SDL_RenderCopy(renderer,ltr_fire_img,NULL,&ltr_fire_rect);
 }
+
 else if(rc_kick_fire_timer >0){
-if(ball_x >80)ball_x -=10;
-if(lc_x + 350*lc_scale > ball_x  && lhead_x - ball_x < 100 && ball_y > lhead_y-100 * lc_scale)
+if(ball_x > 80)ball_x -=10;
+if(lc_x + 350*lc_scale > ball_x  && lhead_x - ball_x < 100 && ball_y > lhead_y-100 * lc_scale){
       lc_x = ball_x - 350 * lc_scale;
+      lc_freezing_timer = fps *2;
+}
 rtl_fire_rect.x = ball_x - ball_radius ;
 rtl_fire_rect.y = ball_y - ball_radius-25;
 rtl_fire_rect.w = ball_rect.w + 100;
@@ -861,7 +781,8 @@ else {
       }
 }
 
-if(lc_y<zamin_y - 500*lc_scale || Ljump){
+
+if(lc_y < zamin_y - 500*lc_scale || Ljump){
 lc_y+=lc_dy;
 lc_dy+=lc_ddy;
 Ljump=0;
@@ -873,30 +794,30 @@ rc_dy+=rc_ddy;
 Rjump=0;
 }
 
-lhead_x=185*lc_scale+lc_x;    //kale donbale badan biad
-lhead_y=165*lc_scale+lc_y;    //kale donbale badan biad
-
+lhead_x=185*lc_scale+lc_x;      //kale donbale badan biad
+lhead_y=165*lc_scale+lc_y;      //kale donbale badan biad
 rhead_x=210*rc_scale+rc_x;    //kale donbale badan biad
 rhead_y=165*rc_scale+rc_y;    //kale donbale badan biad
 
       SDL_PumpEvents();
       if(lc_freezing_timer ==0){
-            if (state[SDL_SCANCODE_A] && lc_x>30) {
+            if (state[SDL_SCANCODE_A] && lhead_x>40) {
                 lc_x-=6;
             }
             if (state[SDL_SCANCODE_D]&&lc_x<1120 && lc_x+300*lc_scale < rc_x) {
                 lc_x+=6;
             }
-                 if (state[SDL_SCANCODE_W] && lc_y>=zamin_y - 500*lc_scale) {
+                 if (state[SDL_SCANCODE_W]  &&  lc_y>=zamin_y - 500*lc_scale) {
                 Ljump=1;
                 lc_dy=-15;
             }
       }
+
       if(rc_freezing_timer == 0){
             if (state[SDL_SCANCODE_LEFT] && rc_x>30 && lc_x+300*lc_scale < rc_x) {
                 rc_x-=6;
             }
-            if (state[SDL_SCANCODE_RIGHT]&&rc_x<1120) {
+            if (state[SDL_SCANCODE_RIGHT]&&rhead_x<1250) {
                 rc_x+=6;
             }
                  if (state[SDL_SCANCODE_UP] && rc_y>=zamin_y - 500*rc_scale) {
@@ -946,6 +867,7 @@ string intToString(int a){
     }
     return ret;
 }
+
 void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[])
 {
     int n = 40;
@@ -960,7 +882,7 @@ void gradient(SDL_Renderer* m_renderer, short int vx[], short int vy[])
 
 
 
-void shoot(){
+void shoot() {
 
 //     cout<<square(ball_x-lc_foot_x(lhead_x,lc_scale))+ square(ball_y-lc_foot_y(lhead_y,lc_scale))<<endl;
 if(lc_shoot>-20) {
@@ -976,7 +898,7 @@ if(lc_shoot>-20) {
 
                   case DEGREE45 :
                          ball_dx = 15;
-                         ball_dy = -12;
+                         ball_dy = -13;
                          break;
                   case DEGREENEGATIVE15 :
                          ball_dx=15;
@@ -1000,7 +922,7 @@ if(rc_shoot>-20) {
 
                   case DEGREE45 :
                          ball_dx = -15;
-                         ball_dy = -12;
+                         ball_dy = -13;
                          break;
                   case DEGREENEGATIVE15 :
                          ball_dx=-15;
@@ -1009,18 +931,14 @@ if(rc_shoot>-20) {
                }
            }
 }
-
-
-//      ellipse(renderer,rc_foot_x(rhead_x,rc_scale),rc_foot_y(rhead_y,rc_scale),shoot_radius*lc_scale,shoot_radius*lc_scale,10,231,10,0);
-//      ellipse(renderer,lc_foot_x(lhead_x,lc_scale),lc_foot_y(lhead_y,lc_scale),shoot_radius*rc_scale,shoot_radius*rc_scale,10,231,10,0);
-
 }
 
 short checkshoot(float tangent){
-if(tangent<0.15 && tangent>0) return DEGREE15;
-if(tangent>0.15 ) return DEGREE45;
+if(tangent<0.10 && tangent>0) return DEGREE15;
+if(tangent>=0.2 ) return DEGREE45;
 if(tangent<0 && tangent>-60) return DEGREENEGATIVE15;
 }
+
 void testellipse(int x,int y,int radius){
 ellipse(renderer,x,y,radius,radius,120,123,123,1);
 }
@@ -1153,11 +1071,12 @@ rc_freezing_timer = 0;
 invisible_ball_timer = 0 ;
 lc_kick_fire_timer = 0;
 rc_kick_fire_timer = 0;
-ball_x=640,ball_y=40;
+ball_x=640;
+ball_y=120;
 ball_radius=30;
-ball_dx=3;
+ball_dx=0;
 ball_ddx=0;
-ball_dy=2;
+ball_dy=-8;
 ball_ddy=0.5;
 lc_dy=0;
 lc_ddy=1.6;
@@ -1175,32 +1094,192 @@ rhead_y=165*rc_scale+rc_y;
 }
 
 void goal(bool left){
-if(left)    lc_goals++;
-if(right) rc_goals++;
-SDL_Rect  goal_rect;
-goal_rect.x  = 450;
-goal_rect.y  = 200;
-goal_rect.h  = 300;
-goal_rect.w =  400;
-resetvalues(0);
-SDL_Texture* goal_img = NULL;
-goal_img = IMG_LoadTexture(renderer,"goal.png");
-SDL_Point  goal_point={200,150};
-float angle = 0;
-int i = 0;
-while(i < 90){
-if(i <= 30 ) angle = 900 - square(i);
-else angle =0;
-SDL_RenderCopy(renderer, m_img, NULL, &img_rect); //background
-SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
-SDL_RenderCopy(renderer, tir, NULL, &tir_rect);//aks tirak ha rooye akse asli
+      if(left)    lc_goals++;
+      else          rc_goals++;
+      SDL_Rect  goal_rect;
+      goal_rect.x  = 450;
+      goal_rect.y  = 200;
+      goal_rect.h  = 300;
+      goal_rect.w =  400;
+      resetvalues(0);
+      SDL_Texture* goal_img = NULL;
+      goal_img = IMG_LoadTexture(renderer,"goal.png");
+      SDL_Point  goal_point={200,150};
+      float angle = 0;
+      int i = 0;
+      while(i < 40){
+                  if(i <= 30 )
+                  {
+                              angle = 900 - square(i);
+                              goal_rect.h  = 10 * i;
+                              goal_rect.w =  14 * i;
+                  }
+                  else angle =0;
 
-SDL_RenderCopyEx(renderer, goal_img , NULL , &goal_rect , angle , &goal_point,SDL_FLIP_NONE);//akse goal
-SDL_RenderPresent(renderer);
-      i++;
-      SDL_Delay(40);
+                  SDL_RenderCopy(renderer, m_img, NULL, &img_rect); //background
+                  SDL_RenderCopyEx(renderer, ball_texture,NULL,&ball_rect,t%20 * ball_dx,&ball_point,SDL_FLIP_NONE);
+                  SDL_RenderCopy(renderer, tir, NULL, &tir_rect);//aks tirak ha rooye akse asli
+
+                  SDL_RenderCopyEx(renderer, goal_img , NULL , &goal_rect , angle , &goal_point,SDL_FLIP_NONE);//akse goal
+                  SDL_RenderPresent(renderer);
+                        i++;
+                        SDL_Delay(40);
 }
 
 
 SDL_DestroyTexture(goal_img);
+}
+void my_line(SDL_Renderer *Renderer, int x_1, int y_1, int L, double theta,int widht, int R, int G, int B )
+
+{
+    int x_2 = x_1 + L*cos(theta);
+    int y_2 = y_1 - L*sin(theta);
+    thickLineRGBA(Renderer,x_1,y_1,x_2,y_2,widht,R,G,B,255);
+  //  SDL_RenderPresent(Renderer);
+}
+
+
+
+void rect(SDL_Renderer *Renderer, int x,int y,int w,int h,int R, int G, int B, int fill_boolian )
+{
+    SDL_Rect rectangle ;
+    rectangle.x = x;
+    rectangle.y = y;
+    rectangle.w = w;
+    rectangle.h = h;
+    SDL_SetRenderDrawColor(Renderer, R, G, B, 255);
+    if (fill_boolian==1)
+    SDL_RenderFillRect(Renderer, &rectangle);
+    SDL_RenderDrawRect(Renderer, &rectangle);
+}
+int PauseMenu(SDL_Renderer* m_renderer, SDL_Texture* m_texture, int W, int H, int ump_w)
+{
+    SDL_Texture* ump_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, W, H);
+    SDL_SetRenderTarget(m_renderer, ump_texture);
+    SDL_RenderCopy(m_renderer, m_texture, NULL, NULL);
+    //0 for resume, 1 for restart, 2 for quit
+    int i = 0;
+    //menu background
+    short int vx[4] = { W / 2 + ump_w,W,W,W / 2 - ump_w }, vy[4] = { 0,0,H,H };
+    filledPolygonColor(m_renderer, vx, vy, 4, 0xff330000);
+    //score
+    const char* ump_time = intToString(t/fps).c_str();
+    textRGBA(m_renderer, W / 2 + ump_w + W / 10, 100, "Time:", 2, 40, 255, 255, 255, 255);
+    textRGBA(m_renderer, W / 2 + ump_w + W / 6 + 80, 150, ump_time, 2, 40, 255, 255, 255, 255);
+    SDL_SetRenderTarget(m_renderer, NULL);
+    SDL_Event* e = new SDL_Event();
+    bool ump_nbp = true; // avoid unnecessary rendering
+    bool hover=false; //mouse is hovering over button
+    // start which run once
+    // first button
+        btn_array[0][0] = ump_w + W / 2 + 10 - (640 * ump_w) / H;
+        btn_array[0][1] = 320;
+        btn_array[0][2] = W;
+        btn_array[0][3] = 420;
+    // second button
+        btn_array[1][0] = ump_w + W / 2 + 10 - (840 * ump_w) / H;
+        btn_array[1][1] = 420;
+        btn_array[1][2] = W;
+        btn_array[1][3] = 520;
+    // third button
+        btn_array[2][0] = ump_w + W / 2 + 10 - (1040 * ump_w) / H;
+        btn_array[2][1] = 520;
+        btn_array[2][2] = W;
+        btn_array[2][3] = 620;
+    int mx=0, my=0;
+    while (1)
+    {
+        e->type = NULL;
+        SDL_PollEvent(e);
+        if (e->type==SDL_MOUSEMOTION)
+        {
+            mx = e-> motion.x;
+            my = e-> motion.y;
+        }
+        else
+        {
+            mx=0;
+            my=0;
+        }
+
+
+        //hover effect
+        for (int j=0;j<3;j++)
+        {
+            if (btn_clicked(j,mx,my) && i!=j)
+            {
+                hover=true;
+                i=j;
+                ump_nbp=true;
+                break;
+            }
+        }
+
+        if (e->type==SDL_MOUSEBUTTONDOWN && hover)
+        {
+            SDL_DestroyTexture(ump_texture);
+            return i;
+        }
+
+        else if (e->type == SDL_KEYDOWN )
+        {
+            if (e->key.keysym.sym == SDLK_RETURN)
+            {
+                SDL_DestroyTexture(ump_texture);
+                return i;
+            }
+            else if (e->key.keysym.sym == SDLK_DOWN)
+            {
+                ump_nbp = true;
+                i++;
+                i %= 3;
+            }
+            else if (e->key.keysym.sym == SDLK_UP)
+            {
+                ump_nbp = true;
+                i--;
+                i = (3 + i) % 3;
+            }
+        }
+        if (ump_nbp)
+        {
+            ump_nbp = false;
+            SDL_RenderCopy(m_renderer, ump_texture, NULL, NULL);
+            //buttons
+            if (i == 0)
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 320 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 420 * ump_w / H };
+                short int ump_vy[4] = { 320,320,420,420 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
+            }
+            else if (i == 1)
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 420 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 520 * ump_w / H };
+                short int ump_vy[4] = { 420,420,520,520 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 255, 255, 255, 255);
+            }
+            else
+            {
+                short int ump_vx[4] = { ump_w + W / 2 + 10 - 2 * 520 * ump_w / H,W,W,ump_w + W / 2 + 10 - 2 * 620 * ump_w / H };
+                short int ump_vy[4] = { 520,520,620,620 };
+                filledPolygonRGBA(m_renderer, ump_vx, ump_vy, 4, 0, 150, 150, 255);
+                gradient(m_renderer, ump_vx, ump_vy);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 550, "Quit", 2, 40, 0, 0, 0, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 350, "Resume", 2, 40, 255, 255, 255, 255);
+                textRGBA(m_renderer, W / 2 + ump_w + 80, 450, "Restart", 2, 40, 255, 255, 255, 255);
+            }
+            SDL_RenderPresent(m_renderer);
+
+        }
+
+    }
+
 }
