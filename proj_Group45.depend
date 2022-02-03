@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1643784156 source:e:\projectsinprogress\proj_group45\main.cpp
+1643910111 source:e:\projectsinprogress\proj_group45\main.cpp
 	<iostream>
 	<iostream>
 	<SDL2/SDL.h>
@@ -8,6 +8,8 @@
 	<SDL2/SDL2_gfx.h>
 	<string>
 	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_mixer.h>
+	<fstream>
 
 1583852878 c:\program files (x86)\codeblocks\i686-w64-mingw32\include\sdl2\sdl.h
 	"SDL_main.h"
@@ -375,4 +377,35 @@
 	"begin_code.h"
 	<string>
 	"close_code.h"
+
+1643786369 source:c:\users\cali\desktop\b\main.cpp
+	<iostream>
+	<iostream>
+	<SDL2/SDL.h>
+	<SDL2/SDL_image.h>
+	<SDL2/SDL.h>
+	<SDL2/SDL2_gfx.h>
+	<string>
+	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_mixer.h>
+
+1540997992 c:\program files (x86)\codeblocks\i686-w64-mingw32\include\sdl2\sdl_mixer.h
+	"SDL_stdinc.h"
+	"SDL_rwops.h"
+	"SDL_audio.h"
+	"SDL_endian.h"
+	"SDL_version.h"
+	"begin_code.h"
+	"close_code.h"
+
+1643801666 source:c:\users\amin\desktop\b\main.cpp
+	<iostream>
+	<iostream>
+	<SDL2/SDL.h>
+	<SDL2/SDL_image.h>
+	<SDL2/SDL.h>
+	<SDL2/SDL2_gfx.h>
+	<string>
+	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_mixer.h>
 
